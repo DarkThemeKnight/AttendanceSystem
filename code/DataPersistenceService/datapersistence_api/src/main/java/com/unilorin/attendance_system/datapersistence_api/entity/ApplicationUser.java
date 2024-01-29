@@ -29,14 +29,14 @@ public class ApplicationUser implements UserDetails {
     private String password;
     @OneToMany(mappedBy = "lecturerInCharge",cascade = CascadeType.ALL)
     private Set<Subject> subjects;
-    private boolean isAccountNonExpired;
-    private boolean isAccountNonLocked;
-    private boolean isCredentialsNonExpired;
-    private boolean isEnabled;
     @Enumerated(EnumType.STRING)
     @ElementCollection(targetClass = Role.class)
     @CollectionTable(name = "user_roles",joinColumns = @JoinColumn(name = "id"))
     private List<Role> userRole;
+    private boolean isAccountNonExpired;
+    private boolean isAccountNonLocked;
+    private boolean isCredentialsNonExpired;
+    private boolean isEnabled;
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return userRole.stream()
