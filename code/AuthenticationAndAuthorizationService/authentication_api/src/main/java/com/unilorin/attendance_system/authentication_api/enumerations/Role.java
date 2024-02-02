@@ -1,4 +1,4 @@
-package com.unilorin.attendance_system.datapersistence_api.constants;
+package com.unilorin.attendance_system.authentication_api.enumerations;
 public enum Role {
     ROLE_LECTURER,
     ROLE_ADMIN,

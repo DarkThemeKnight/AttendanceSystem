@@ -1,6 +1,7 @@
-package com.unilorin.attendance_system.datapersistence_api.entity;
-import com.unilorin.attendance_system.datapersistence_api.constants.Role;
-import jakarta.persistence.*;
+package com.unilorin.attendance_system.authentication_api.utils;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.unilorin.attendance_system.authentication_api.enumerations.Role;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -11,28 +12,36 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @Data
-@Entity
-@ToString
+@NoArgsConstructor
 public class ApplicationUser implements UserDetails {
-    @Id
+    @JsonProperty("id")
     private String id;
+    @JsonProperty("firstname")
     private String firstname;
+    @JsonProperty("lastname")
     private String lastname;
+    @JsonProperty("middleName")
     private String middleName;
+    @JsonProperty("schoolEmail")
     private String schoolEmail;
+    @JsonProperty("password")
     private String password;
-    @Enumerated(EnumType.STRING)
-    @ElementCollection(targetClass = Role.class, fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles",joinColumns = @JoinColumn(name = "id"))
+    @JsonProperty("in_charge_of")
+    private Set<SubjectResponseDto> subjects;
+    @JsonProperty("userRole")
     private List<Role> userRole;
+    @JsonProperty("isAccountNonExpired")
     private boolean isAccountNonExpired;
+    @JsonProperty("isAccountNonLocked")
     private boolean isAccountNonLocked;
+    @JsonProperty("isCredentialsNonExpired")
     private boolean isCredentialsNonExpired;
+    @JsonProperty("isEnabled")
     private boolean isEnabled;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return userRole.stream()
@@ -43,4 +52,5 @@ public class ApplicationUser implements UserDetails {
     public String getUsername() {
         return id;
     }
+
 }
