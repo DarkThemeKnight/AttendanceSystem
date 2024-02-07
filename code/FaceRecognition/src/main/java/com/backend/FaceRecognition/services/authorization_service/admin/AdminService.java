@@ -3,7 +3,7 @@ import com.backend.FaceRecognition.constants.Role;
 import com.backend.FaceRecognition.entities.ApplicationUser;
 import com.backend.FaceRecognition.entities.Student;
 import com.backend.FaceRecognition.entities.Subject;
-import com.backend.FaceRecognition.services.data_persistence_service.ApplicationUserDataPersistenceService;
+import com.backend.FaceRecognition.services.data_persistence_service.ApplicationUserService;
 import com.backend.FaceRecognition.services.student.AddStudentRequest;
 import com.backend.FaceRecognition.services.student.StudentService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
@@ -24,38 +24,38 @@ import java.util.stream.Collectors;
 
 @Service
 public class AdminService {
-    private final ApplicationUserDataPersistenceService applicationUserDataPersistenceService;
+    private final ApplicationUserService applicationUserService;
     private final SubjectService subjectService;
     private final StudentService studentService;
     @Autowired
-    public AdminService(ApplicationUserDataPersistenceService applicationUserDataPersistenceService, SubjectService subjectService, StudentService studentService) {
-        this.applicationUserDataPersistenceService = applicationUserDataPersistenceService;
+    public AdminService(ApplicationUserService applicationUserService, SubjectService subjectService, StudentService studentService) {
+        this.applicationUserService = applicationUserService;
         this.subjectService = subjectService;
         this.studentService = studentService;
     }
     public ResponseEntity<String> lockAccount(String id) {
-        Optional<ApplicationUser> userOptional = applicationUserDataPersistenceService.findUser(id);
+        Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
         if (userOptional.isPresent()) {
             ApplicationUser user = userOptional.get();
             if (user.hasRole(Role.ROLE_SUPER_ADMIN) || user.hasRole(Role.ROLE_ADMIN)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to lock account.");
             }
             user.setEnabled(false);
-            applicationUserDataPersistenceService.update(user);
+            applicationUserService.update(user);
             return ResponseEntity.ok("Account locked successfully.");
         } else {
             return ResponseEntity.notFound().build();
         }
     }
     public ResponseEntity<String> unlockAccount(String id) {
-        Optional<ApplicationUser> userOptional = applicationUserDataPersistenceService.findUser(id);
+        Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
         if (userOptional.isPresent()) {
             ApplicationUser user = userOptional.get();
             if (user.hasRole(Role.ROLE_SUPER_ADMIN) || user.hasRole(Role.ROLE_ADMIN)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to lock account.");
             }
             user.setEnabled(true);
-            applicationUserDataPersistenceService.update(user);
+            applicationUserService.update(user);
             return ResponseEntity.ok("Account locked successfully.");
         } else {
             return ResponseEntity.notFound().build();
@@ -96,7 +96,7 @@ public class AdminService {
         }
         ApplicationUser user = null;
         if (request.getIdLecturerInCharge() != null && !request.getIdLecturerInCharge().isEmpty()) {
-            user = applicationUserDataPersistenceService.findUser(request.getIdLecturerInCharge()).orElse(null);
+            user = applicationUserService.findUser(request.getIdLecturerInCharge()).orElse(null);
             if (user == null) {
                 return new ResponseEntity<>("Lecturer not found", HttpStatus.NOT_FOUND);
             }
@@ -127,7 +127,7 @@ public class AdminService {
     public Subject parse(SubjectRequest request){
         ApplicationUser user = null;
         if (request.getIdLecturerInCharge() != null && !request.getIdLecturerInCharge().isEmpty()) {
-            user = applicationUserDataPersistenceService.findUser(request.getIdLecturerInCharge()).orElse(null);
+            user = applicationUserService.findUser(request.getIdLecturerInCharge()).orElse(null);
             if (user == null) {
                 return null;
             }

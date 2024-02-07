@@ -12,11 +12,11 @@ import java.util.Optional;
 
 @Service
 @Slf4j
-public class ApplicationUserDataPersistenceService {
+public class ApplicationUserService {
     private final ApplicationUserRepository applicationUserRepository;
 
     @Autowired
-    public ApplicationUserDataPersistenceService(ApplicationUserRepository applicationUserRepository) {
+    public ApplicationUserService(ApplicationUserRepository applicationUserRepository) {
         this.applicationUserRepository = applicationUserRepository;
     }
     public Optional<ApplicationUser> findUser(String userId){

@@ -1,8 +1,7 @@
 package com.backend.FaceRecognition.services.authorization_service.super_admin;
 import com.backend.FaceRecognition.constants.Role;
 import com.backend.FaceRecognition.entities.ApplicationUser;
-import com.backend.FaceRecognition.services.data_persistence_service.ApplicationUserDataPersistenceService;
-import com.backend.FaceRecognition.services.jwt_service.JwtService;
+import com.backend.FaceRecognition.services.data_persistence_service.ApplicationUserService;
 import com.backend.FaceRecognition.utils.application_user.ApplicationUserRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,30 +13,30 @@ import java.util.Set;
 
 @Service
 public class SuperUserService {
-    private final ApplicationUserDataPersistenceService applicationUserDataPersistenceService;
+    private final ApplicationUserService applicationUserService;
     private final PasswordEncoder passwordEncoder;
     @Autowired
-    public SuperUserService(ApplicationUserDataPersistenceService applicationUserDataPersistenceService, PasswordEncoder passwordEncoder) {
-        this.applicationUserDataPersistenceService = applicationUserDataPersistenceService;
+    public SuperUserService(ApplicationUserService applicationUserService, PasswordEncoder passwordEncoder) {
+        this.applicationUserService = applicationUserService;
         this.passwordEncoder = passwordEncoder;
     }
 
     public ResponseEntity<String> addNewAdmin(ApplicationUserRequest request){
         ApplicationUser user = buildUser(request);
         user.setUserRole(Set.of(Role.ROLE_ADMIN));
-        ResponseEntity<Void> response= applicationUserDataPersistenceService.create(user);
+        ResponseEntity<Void> response= applicationUserService.create(user);
         if (response.getStatusCode() == HttpStatus.CONFLICT) {
             return new ResponseEntity<>("User already Exists", HttpStatus.CONFLICT);
         }
         return new ResponseEntity<>("Admin added",HttpStatus.OK);
     }
     public ResponseEntity<String> setToAdmin(String id){
-        Optional<ApplicationUser> response= applicationUserDataPersistenceService.findUser(id);
+        Optional<ApplicationUser> response= applicationUserService.findUser(id);
         if (response.isPresent()){
             ApplicationUser user = response.get();
             boolean added = user.addUserRole(Role.ROLE_ADMIN);
             if (added){
-                applicationUserDataPersistenceService.update(user);
+                applicationUserService.update(user);
                 return new ResponseEntity<>("USER UPDATED TO ADMIN",HttpStatus.OK);
             }
             else {
@@ -61,28 +60,28 @@ public class SuperUserService {
                 .build();
     }
     public ResponseEntity<String> lockAccount(String id) {
-        Optional<ApplicationUser> userOptional = applicationUserDataPersistenceService.findUser(id);
+        Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
         if (userOptional.isPresent()) {
             ApplicationUser user = userOptional.get();
             if (user.hasRole(Role.ROLE_SUPER_ADMIN)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to lock account.");
             }
             user.setEnabled(false);
-            applicationUserDataPersistenceService.update(user);
+            applicationUserService.update(user);
             return ResponseEntity.ok("Account locked successfully.");
         } else {
             return ResponseEntity.notFound().build();
         }
     }
     public ResponseEntity<String> unlockAccount(String id) {
-        Optional<ApplicationUser> userOptional = applicationUserDataPersistenceService.findUser(id);
+        Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
         if (userOptional.isPresent()) {
             ApplicationUser user = userOptional.get();
             if (user.hasRole(Role.ROLE_SUPER_ADMIN)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to lock account.");
             }
             user.setEnabled(false);
-            applicationUserDataPersistenceService.update(user);
+            applicationUserService.update(user);
             return ResponseEntity.ok("Account locked successfully.");
         } else {
             return ResponseEntity.notFound().build();

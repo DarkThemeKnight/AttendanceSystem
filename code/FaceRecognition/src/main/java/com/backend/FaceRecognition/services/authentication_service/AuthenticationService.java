@@ -2,7 +2,7 @@ package com.backend.FaceRecognition.services.authentication_service;
 
 import com.backend.FaceRecognition.constants.Role;
 import com.backend.FaceRecognition.entities.ApplicationUser;
-import com.backend.FaceRecognition.services.data_persistence_service.ApplicationUserDataPersistenceService;
+import com.backend.FaceRecognition.services.data_persistence_service.ApplicationUserService;
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.utils.application_user.ApplicationUserRequest;
 import com.backend.FaceRecognition.utils.authentication.AuthenticationRequest;
@@ -14,27 +14,26 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 @Service
 @Slf4j
 public class AuthenticationService {
-    private final ApplicationUserDataPersistenceService applicationUserDataPersistenceService;
+    private final ApplicationUserService applicationUserService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public AuthenticationService(ApplicationUserDataPersistenceService applicationUserDataPersistenceService, JwtService jwtService, PasswordEncoder passwordEncoder) {
-        this.applicationUserDataPersistenceService = applicationUserDataPersistenceService;
+    public AuthenticationService(ApplicationUserService applicationUserService, JwtService jwtService, PasswordEncoder passwordEncoder) {
+        this.applicationUserService = applicationUserService;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
     }
     public ResponseEntity<AuthenticationResponse> register(ApplicationUserRequest applicationUser) {
         ApplicationUser user = buildUser(applicationUser);
         user.setUserRole(Set.of(Role.ROLE_LECTURER));
-        ResponseEntity<Void> response= applicationUserDataPersistenceService.create(user);
+        ResponseEntity<Void> response= applicationUserService.create(user);
         if (response.getStatusCode() == HttpStatus.CONFLICT) {
             return new ResponseEntity<>(new AuthenticationResponse("User already Exists", null), HttpStatus.CONFLICT);
         }
@@ -56,7 +55,7 @@ public class AuthenticationService {
                 .build();
     }
     public ResponseEntity<AuthenticationResponse> login(AuthenticationRequest request){
-        Optional<ApplicationUser> userOptional = applicationUserDataPersistenceService.findUser(request.getId());
+        Optional<ApplicationUser> userOptional = applicationUserService.findUser(request.getId());
         if (userOptional.isPresent()){
             ApplicationUser user = userOptional.get();
             if (!user.isEnabled()){
@@ -64,7 +63,7 @@ public class AuthenticationService {
             }
             if (passwordEncoder.matches(request.getPassword(),user.getPassword())){
                 user.setCredentialsNonExpired(true);
-                applicationUserDataPersistenceService.update(user);
+                applicationUserService.update(user);
                 String token = jwtService.generate(new HashMap<>(),user);
                 return new ResponseEntity<>(new AuthenticationResponse("Login successfully", token),HttpStatus.OK);
             }
@@ -76,11 +75,11 @@ public class AuthenticationService {
     }
     public ResponseEntity<AuthenticationResponse> logout(String bearerToken){
         String id = jwtService.getId(jwtService.extractTokenFromHeader(bearerToken));
-        Optional<ApplicationUser> userOptional = applicationUserDataPersistenceService.findUser(id);
+        Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
         if (userOptional.isPresent()){
             ApplicationUser user = userOptional.get();
             user.setCredentialsNonExpired(false);
-            applicationUserDataPersistenceService.update(user);
+            applicationUserService.update(user);
             return new ResponseEntity<>(new AuthenticationResponse("Logout successful",null),HttpStatus.OK);
         }
         return new ResponseEntity<>(new AuthenticationResponse("User not found",null),HttpStatus.NOT_FOUND);
