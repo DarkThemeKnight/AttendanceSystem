@@ -11,13 +11,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 @Slf4j
 public class InitializeBeans {
     private final ApplicationUserService userService;
     private final PasswordEncoder passwordEncoder;
-    @Autowired
+
     public InitializeBeans(ApplicationUserService userService, PasswordEncoder passwordEncoder) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
@@ -30,5 +32,12 @@ public class InitializeBeans {
             userService.create(user);
             log.info("Successfully setup application owner");
         };
+    }
+    @Bean
+    public FaceRecognitionEndpoints initializeEndpoints(){
+        Map<String,String> endpointMap = new HashMap<>();
+        endpointMap.put("ip","http://localhost:8000/api/v1/image-processing");
+        endpointMap.put("rec","http://localhost:8000/api/v1/recognize");
+        return new FaceRecognitionEndpoints(endpointMap);
     }
 }

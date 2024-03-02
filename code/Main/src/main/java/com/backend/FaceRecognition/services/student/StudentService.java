@@ -1,7 +1,6 @@
 package com.backend.FaceRecognition.services.student;
 import com.backend.FaceRecognition.entities.Student;
 import com.backend.FaceRecognition.repository.StudentRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,16 +11,8 @@ import java.util.Optional;
 @Service
 public class StudentService {
     private final StudentRepository studentRepository;
-    @Autowired
     public StudentService(StudentRepository studentRepository) {
         this.studentRepository = studentRepository;
-    }
-    @Transactional
-    public List<Student> sortByFaculty(String faculty){
-        return studentRepository.findAllByFaculty(faculty);
-    }
-    public List<Student> sortByDepartment(String department){
-        return studentRepository.findAllByFaculty(department);
     }
     public List<Student> getAllStudents() {
         return studentRepository.findAll();

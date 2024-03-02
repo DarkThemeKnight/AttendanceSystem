@@ -1,16 +1,16 @@
-package com.backend.FaceRecognition.utils.student;
+package com.backend.FaceRecognition.utils;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
-public class StudentRequest {
+@Data
+public class EncodedImageResponse {
     @JsonProperty("matriculation_number")
     private String matriculationNumber;
+    @JsonProperty("encoded_image_value")
+    private double[] data;
 }

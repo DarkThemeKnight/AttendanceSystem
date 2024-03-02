@@ -3,7 +3,6 @@ package com.backend.FaceRecognition.services.data_persistence_service;
 import com.backend.FaceRecognition.entities.ApplicationUser;
 import com.backend.FaceRecognition.repository.ApplicationUserRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -15,20 +14,25 @@ import java.util.Optional;
 public class ApplicationUserService {
     private final ApplicationUserRepository applicationUserRepository;
 
-    @Autowired
     public ApplicationUserService(ApplicationUserRepository applicationUserRepository) {
         this.applicationUserRepository = applicationUserRepository;
     }
     public Optional<ApplicationUser> findUser(String userId){
         return applicationUserRepository.findById(userId);
     }
+
     /**
-     * Creates a new ApplicationUser if it doesn't already exist.
+     * Creates a new application user.
+     * This method attempts to create a new application user in the system.
+     * It checks if the user already exists
+     * based on the provided user ID. If the user already exists, a conflict status is returned.
+     * If the user doesn't exist, it is saved to the repository,
+     * and a success status is returned.
      *
-     * @param applicationUser The ApplicationUser object to be created.
-     * @return ResponseEntity<Void> An HTTP response entity indicating the outcome of the operation.
-     *         - HttpStatus.CONFLICT if the user with the provided ID already exists.
-     *         - HttpStatus.OK if the user is successfully created.
+     * @param applicationUser The ApplicationUser object representing the user to be created.
+     * @return A ResponseEntity indicating the result of the operation.
+     *         If the user already exists, a conflict status is returned.
+     *         If the user is successfully created, an OK status is returned.
      */
     public ResponseEntity<Void> create(ApplicationUser applicationUser) {
         // Check if the user already exists
@@ -44,13 +48,18 @@ public class ApplicationUserService {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+
     /**
-     * Updates an existing ApplicationUser if it exists.
+     * Updates an existing application user.
+     * This method attempts to update an existing application user in the system based on the provided user ID.
+     * If the user exists, it updates the user in the repository.
+     * If the user doesn't exist, a not found status
+     * is returned.
      *
-     * @param appUser The ApplicationUser object to be updated.
-     * @return ResponseEntity<Void> An HTTP response entity indicating the outcome of the operation.
-     *         - HttpStatus.OK if the user is successfully updated.
-     *         - HttpStatus.NOT_FOUND if the user with the provided ID does not exist.
+     * @param appUser The ApplicationUser object representing the user to be updated.
+     * @return A ResponseEntity indicating the result of the operation.
+     *         If the user is successfully updated, an OK status is returned.
+     *         If the user doesn't exist, a not found status is returned.
      */
     public ResponseEntity<Void> update(ApplicationUser appUser) {
         // Check if the user exists
@@ -64,6 +73,7 @@ public class ApplicationUserService {
         // User doesn't exist, return not found status
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
+
 
 
 

@@ -17,7 +17,4 @@ public class AddStudentRequest {
     private String lastname;
     @JsonProperty("middle_name")
     private String middleName;
-    private String faculty;
-    private String department;
-
 }

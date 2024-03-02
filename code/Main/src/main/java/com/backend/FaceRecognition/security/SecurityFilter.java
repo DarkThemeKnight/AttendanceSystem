@@ -2,7 +2,6 @@ package com.backend.FaceRecognition.security;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,7 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityFilter {
     private final AuthenticationManager authenticationManager;
     private final JwtAuthFilter jwtAuthFilter;
-    @Autowired
+
     public SecurityFilter(AuthenticationManager authenticationManager, JwtAuthFilter jwtAuthFilter) {
         this.authenticationManager = authenticationManager;
         this.jwtAuthFilter = jwtAuthFilter;
@@ -35,8 +34,20 @@ public class SecurityFilter {
                     .sessionManagement(managementConfigure -> managementConfigure.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authorizeHttpRequests(authorizationManagerRequestMatcherRegistry ->
                             authorizationManagerRequestMatcherRegistry
-                                    .anyRequest()
-                                    .permitAll()
+                                .requestMatchers("api/v1/auth/**")
+                                .permitAll()
+                                .requestMatchers("api/v1/admin/**")
+                                .hasAnyAuthority("ROLE_ADMIN","ROLE_SUPER_ADMIN")
+                                .requestMatchers("api/v1/advisor/**")
+                                .hasAnyAuthority("ROLE_ADVISOR","ROLE_ADMIN","ROLE_SUPER_ADMIN")
+                                .requestMatchers("api/v1/attendance/**")
+                                .hasAuthority("ROLE_LECTURER")
+                                .requestMatchers("api/v1/encodings/**")
+                                .authenticated()
+                                .requestMatchers("api/v1/super-admin")
+                                .hasRole("SUPER_ADMIN")
+                                .anyRequest()
+                                .denyAll()
                     )
                     .authenticationManager(authenticationManager)
                     .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

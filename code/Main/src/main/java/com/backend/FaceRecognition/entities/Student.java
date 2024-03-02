@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.*;
 
@@ -28,22 +29,7 @@ public class Student {
             inverseJoinColumns = @JoinColumn(name = "subject_code")
     )
     private Set<Subject> subjects = new HashSet<>();
-    @Column(name = "face_image")
-    @Lob
-    @ElementCollection
-    private List<byte[]> faceImages; // Storing facial image as BLOB
-    private String faculty;
-    private String department;
-    public List<byte[]> getFaceImages() {
-        if (faceImages == null){
-            faceImages = new ArrayList<>();
-        }
-        return faceImages;
-    }
 
-    public void add(byte[] image){
-        faceImages.add(image);
-    }
     public void add(Subject subject){
         subjects.add(subject);
     }
