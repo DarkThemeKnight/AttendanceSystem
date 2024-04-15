@@ -2,6 +2,7 @@ package com.backend.FaceRecognition.services.authorization_service.super_admin;
 import com.backend.FaceRecognition.constants.Role;
 import com.backend.FaceRecognition.entities.ApplicationUser;
 import com.backend.FaceRecognition.services.data_persistence_service.ApplicationUserService;
+import com.backend.FaceRecognition.utils.Response;
 import com.backend.FaceRecognition.utils.application_user.ApplicationUserRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,14 +35,14 @@ public class SuperUserService {
      *         If the admin user is successfully added, an OK response is returned.
      *         If the user already exists, a conflict response is returned.
      */
-    public ResponseEntity<String> addNewAdmin(ApplicationUserRequest request){
+    public ResponseEntity<Response> addNewAdmin(ApplicationUserRequest request){
         ApplicationUser user = buildUser(request);
         user.setUserRole(Set.of(Role.ROLE_ADMIN));
         ResponseEntity<Void> response= applicationUserService.create(user);
         if (response.getStatusCode() == HttpStatus.CONFLICT) {
-            return new ResponseEntity<>("User already Exists", HttpStatus.CONFLICT);
+            return new ResponseEntity<>(new Response("User already Exists"), HttpStatus.CONFLICT);
         }
-        return new ResponseEntity<>("Admin added", HttpStatus.OK);
+        return new ResponseEntity<>(new Response("Admin added"), HttpStatus.OK);
     }
 
     /**
@@ -56,20 +57,20 @@ public class SuperUserService {
      *         If the user is already an admin, a conflict response is returned.
      *         If the user is not found, a not found response is returned.
      */
-    public ResponseEntity<String> setToAdmin(String id){
+    public ResponseEntity<Response> setToAdmin(String id){
         Optional<ApplicationUser> response= applicationUserService.findUser(id);
         if (response.isPresent()){
             ApplicationUser user = response.get();
             boolean added = user.addUserRole(Role.ROLE_ADMIN);
             if (added){
                 applicationUserService.update(user);
-                return new ResponseEntity<>("USER UPDATED TO ADMIN", HttpStatus.OK);
+                return new ResponseEntity<>(new Response("USER UPDATED TO ADMIN"), HttpStatus.OK);
             }
             else {
-                return new ResponseEntity<>("ALREADY AN ADMIN", HttpStatus.CONFLICT);
+                return new ResponseEntity<>(new Response("ALREADY AN ADMIN"), HttpStatus.CONFLICT);
             }
         }
-        return new ResponseEntity<>("USER NOT FOUND", HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(new Response("USER NOT FOUND"), HttpStatus.NOT_FOUND);
     }
 
     public ApplicationUser buildUser(ApplicationUserRequest applicationUser) {
@@ -78,7 +79,7 @@ public class SuperUserService {
                 .firstname(applicationUser.getFirstname())
                 .lastname(applicationUser.getLastname())
                 .middleName(applicationUser.getMiddleName())
-                .password(passwordEncoder.encode(applicationUser.getPassword()))
+                .password(passwordEncoder.encode(applicationUser.getLastname()).toUpperCase())
                 .schoolEmail(applicationUser.getSchoolEmail())
                 .isAccountNonLocked(true)
                 .isCredentialsNonExpired(true)
@@ -99,16 +100,16 @@ public class SuperUserService {
      *         If the user is not found, a not found response is returned.
      *         If the user is a super admin, an unauthorized response is returned.
      */
-    public ResponseEntity<String> lockAccount(String id) {
+    public ResponseEntity<Response> lockAccount(String id) {
         Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
         if (userOptional.isPresent()) {
             ApplicationUser user = userOptional.get();
             if (user.hasRole(Role.ROLE_SUPER_ADMIN)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to lock account.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new Response("Unauthorized to lock account."));
             }
             user.setEnabled(false);
             applicationUserService.update(user);
-            return ResponseEntity.ok("Account locked successfully.");
+            return ResponseEntity.ok(new Response("Account locked successfully."));
         } else {
             return ResponseEntity.notFound().build();
         }
@@ -129,16 +130,16 @@ public class SuperUserService {
      *         If the user is not found, a not found response is returned.
      *         If the user is a super admin, an unauthorized response is returned.
      */
-    public ResponseEntity<String> unlockAccount(String id) {
+    public ResponseEntity<Response> unlockAccount(String id) {
         Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
         if (userOptional.isPresent()) {
             ApplicationUser user = userOptional.get();
             if (user.hasRole(Role.ROLE_SUPER_ADMIN)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to unlock account.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new Response("Unauthorized to unlock account."));
             }
             user.setEnabled(true);  // Corrected to set the account as enabled
             applicationUserService.update(user);
-            return ResponseEntity.ok("Account unlocked successfully.");
+            return ResponseEntity.ok(new Response("Account unlocked successfully."));
         } else {
             return ResponseEntity.notFound().build();
         }

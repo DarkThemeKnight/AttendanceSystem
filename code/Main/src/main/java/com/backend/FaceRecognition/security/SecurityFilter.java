@@ -44,10 +44,12 @@ public class SecurityFilter {
                                 .hasAuthority("ROLE_LECTURER")
                                 .requestMatchers("api/v1/encodings/**")
                                 .authenticated()
-                                .requestMatchers("api/v1/super-admin")
+                                .requestMatchers("api/v1/super-admin/**")
                                 .hasRole("SUPER_ADMIN")
+                                .requestMatchers("test/**")
+                                .permitAll()
                                 .anyRequest()
-                                .denyAll()
+                                .authenticated()
                     )
                     .authenticationManager(authenticationManager)
                     .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
@@ -70,7 +72,7 @@ public class SecurityFilter {
                     .build();
         }catch (Exception e) {
             log.error("Exception in filter Security filter chain");
-            throw new RuntimeException(e);
+            throw new RuntimeException  (e);
         }
         return filterChain;
     }

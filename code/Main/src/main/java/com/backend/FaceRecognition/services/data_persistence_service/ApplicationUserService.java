@@ -13,14 +13,12 @@ import java.util.Optional;
 @Slf4j
 public class ApplicationUserService {
     private final ApplicationUserRepository applicationUserRepository;
-
     public ApplicationUserService(ApplicationUserRepository applicationUserRepository) {
         this.applicationUserRepository = applicationUserRepository;
     }
     public Optional<ApplicationUser> findUser(String userId){
         return applicationUserRepository.findById(userId);
     }
-
     /**
      * Creates a new application user.
      * This method attempts to create a new application user in the system.
@@ -57,21 +55,19 @@ public class ApplicationUserService {
      * is returned.
      *
      * @param appUser The ApplicationUser object representing the user to be updated.
-     * @return A ResponseEntity indicating the result of the operation.
-     *         If the user is successfully updated, an OK status is returned.
-     *         If the user doesn't exist, a not found status is returned.
      */
-    public ResponseEntity<Void> update(ApplicationUser appUser) {
+    public void update(ApplicationUser appUser) {
         // Check if the user exists
         Optional<ApplicationUser> user = applicationUserRepository.findById(appUser.getId());
         if (user.isPresent()) {
             // User exists, update it in the repository
             applicationUserRepository.save(appUser);
             // Return success status
-            return new ResponseEntity<>(HttpStatus.OK);
+            new ResponseEntity<>(HttpStatus.OK);
+            return;
         }
         // User doesn't exist, return not found status
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
 

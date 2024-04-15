@@ -3,7 +3,7 @@ package com.backend.FaceRecognition.services.face_recognition_service;
 import com.backend.FaceRecognition.entities.Student;
 import com.backend.FaceRecognition.entities.Subject;
 import com.backend.FaceRecognition.services.image_request_service.EncodingService;
-import com.backend.FaceRecognition.services.student.StudentService;
+import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
 import com.backend.FaceRecognition.utils.*;
 
@@ -17,7 +17,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
-import java.io.IOException;
+
 import java.util.*;
 
 @Service
@@ -53,7 +53,7 @@ public class FaceRecognitionService {
         if (subject == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-        List<String> matriculationNumbers = subject.getStudents().stream()
+        List<String> matriculationNumbers = studentService.getAllStudentsOfferingCourse(subjectCode).stream()
                 .map(Student::getMatriculationNumber)
                 .toList();
         return new ResponseEntity<>(getResponse(matriculationNumbers), HttpStatus.OK);
@@ -93,10 +93,8 @@ public class FaceRecognitionService {
      * @param bearer    The bearer token used for authentication.
      * @return A ResponseEntity containing the recognized Student object if successful, or appropriate status
      *         codes indicating errors such as not found, internal server error, or unauthorized.
-     * @throws IOException If an I/O exception occurs while processing the image file.
      */
-    public ResponseEntity<Student> recognizeFace(MultipartFile file, String subjectId, String bearer)
-            throws IOException {
+    public ResponseEntity<Student> recognizeFace(MultipartFile file, String subjectId, String bearer) {
         String endpoint = faceRecognitionEndpoints.getEndpoint("rec") + "?subject_id=" + subjectId;
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
@@ -104,7 +102,8 @@ public class FaceRecognitionService {
         headers.add("Authorization", bearer);
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", file.getResource()); // Assuming getResource() gives InputStreamResource
-        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        HttpEntity<MultiValueMap<String, Object>> requestEntity
+                = new HttpEntity<>(body, headers);
         ResponseEntity<StudentRequest> responseEntity = restTemplate.exchange(
                 endpoint,
                 HttpMethod.POST,
@@ -116,7 +115,9 @@ public class FaceRecognitionService {
             if (val == null) {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
-            Student st = studentService.getStudentById(val.getMatriculationNumber()).orElse(null);
+            log.info("Student found => {}",val.getStudent_id());
+            Student st = studentService.getStudentById
+                    (val.getStudent_id()).orElse(null);
             if (st == null) {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }

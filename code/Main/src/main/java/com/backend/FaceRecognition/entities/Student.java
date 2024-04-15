@@ -22,7 +22,7 @@ public class Student {
     private String lastname;
     @Column(name = "middle_name")
     private String middleName;
-    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(
             name = "student_subject",
             joinColumns = @JoinColumn(name = "matriculation_number"),
@@ -41,5 +41,8 @@ public class Student {
     }
     public void remove(Collection<Subject> subjects){
         this.subjects.removeAll(subjects);
+    }
+    public void clear(){
+        subjects.clear();
     }
 }

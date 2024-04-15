@@ -11,6 +11,6 @@ import lombok.ToString;
 @AllArgsConstructor
 @ToString
 public class StudentRequest {
-    @JsonProperty("matriculation_number")
-    private String matriculationNumber;
+    @JsonProperty("student_id")
+    private String student_id;
 }

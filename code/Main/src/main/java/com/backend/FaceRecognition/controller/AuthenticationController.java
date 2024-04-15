@@ -3,7 +3,6 @@ package com.backend.FaceRecognition.controller;
 import com.backend.FaceRecognition.services.authentication_service.AuthenticationService;
 import com.backend.FaceRecognition.utils.authentication.AuthenticationRequest;
 import com.backend.FaceRecognition.utils.authentication.AuthenticationResponse;
-import com.backend.FaceRecognition.utils.application_user.ApplicationUserRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,26 +15,6 @@ public class AuthenticationController {
     public AuthenticationController(AuthenticationService authenticationService) {
         this.authenticationService = authenticationService;
     }
-    /**
-     * Registers a new user with the provided details.
-     * This endpoint registers a new user with the provided details.
-     * It delegates the registration process
-     * to the AuthenticationService.
-     * If the registration is successful, it returns a success response (200)
-     * along with a JWT token.
-     * If the user already exists, a conflict response (409) is returned along with
-     * an appropriate message.
-     *
-     * @param applicationUser The details of the user to be registered.
-     * @return A ResponseEntity containing an AuthenticationResponse object.
-     *         If the registration is successful, a JWT token is returned along with a success response (200).
-     *         If the user already exists, a conflict response (409) is returned along with an appropriate message.
-     */
-    @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> register(@RequestBody ApplicationUserRequest applicationUser) {
-        return authenticationService.register(applicationUser);
-    }
-
     /**
      * Authenticates a user based on the provided credentials.
      *
@@ -57,7 +36,6 @@ public class AuthenticationController {
         // Delegate the authentication process to the AuthenticationService
         return authenticationService.login(authenticationRequest);
     }
-
     /**
      * Logs out a user based on the provided JWT token.
      * This endpoint logs out a user based on the provided JWT token.

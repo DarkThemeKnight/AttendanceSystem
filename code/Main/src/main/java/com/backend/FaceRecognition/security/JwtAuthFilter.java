@@ -44,17 +44,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if(!userId.isEmpty() && SecurityContextHolder.getContext().getAuthentication() == null){
                 ApplicationUser applicationUser = userRepository.findById(userId).orElse(null);
                 if(applicationUser == null){
-                    response.sendError(HttpStatus.NOT_FOUND.value(),"Username not found");
+                    response.sendError(HttpStatus.UNAUTHORIZED.value(),"Username not found");
                     return;
                 }
 
                 if (!applicationUser.isEnabled()){
-                    response.sendError(HttpStatus.BAD_REQUEST.value(),"Disabled Account");
+                    response.sendError(HttpStatus.UNAUTHORIZED.value(),"Disabled Account");
                     return;
                 }
                 if (!applicationUser.isCredentialsNonExpired()){
-                    log.info("Invalid credentials");
-                    response.sendError(HttpStatus.BAD_REQUEST.value(),"Expired credentials");
+                    response.sendError(HttpStatus.UNAUTHORIZED.value(),"Expired credentials");
                     return;
                 }
                 if (jwtService.isValidToken(token, applicationUser)){

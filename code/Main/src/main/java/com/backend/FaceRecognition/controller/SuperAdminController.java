@@ -1,6 +1,7 @@
 package com.backend.FaceRecognition.controller;
 
 import com.backend.FaceRecognition.services.authorization_service.super_admin.SuperUserService;
+import com.backend.FaceRecognition.utils.Response;
 import com.backend.FaceRecognition.utils.application_user.ApplicationUserRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,10 +31,9 @@ public class SuperAdminController {
      *         - If the user already exists, returns a CONFLICT (409) status.
      */
     @PostMapping("/add-new-admin")
-    public ResponseEntity<String> addNewAdmin(@RequestBody ApplicationUserRequest request) {
+    public ResponseEntity<Response> addNewAdmin(@RequestBody ApplicationUserRequest request) {
         return superUserService.addNewAdmin(request);
     }
-
     /**
      * Sets a user to the administrator role.
      * This endpoint allows setting an existing user identified by the provided ID to the administrator role.
@@ -52,7 +52,7 @@ public class SuperAdminController {
      *         - If the user is not found, returns a NOT_FOUND (404) status.
      */
     @PostMapping("/set-to-admin/{id}")
-    public ResponseEntity<String> setToAdmin(@PathVariable String id) {
+    public ResponseEntity<Response> setToAdmin(@PathVariable String id) {
         return superUserService.setToAdmin(id);
     }
 
@@ -74,10 +74,9 @@ public class SuperAdminController {
      *         - If the user has the ROLE_SUPER_ADMIN role, returns UNAUTHORIZED (401) status.
      */
     @PostMapping("/lock-account/{id}")
-    public ResponseEntity<String> lockAccount(@PathVariable String id) {
+    public ResponseEntity<Response> lockAccount(@PathVariable String id) {
         return superUserService.lockAccount(id);
     }
-
     /**
      * Unlocks the account associated with the provided user ID.
      * This endpoint unlocks the account associated with the user ID provided in the path variable.
@@ -96,7 +95,7 @@ public class SuperAdminController {
      *         - If the user has the ROLE_SUPER_ADMIN role, returns UNAUTHORIZED (401) status.
      */
     @PostMapping("/unlock-account/{id}")
-    public ResponseEntity<String> unlockAccount(@PathVariable String id) {
+    public ResponseEntity<Response> unlockAccount(@PathVariable String id) {
         return superUserService.unlockAccount(id);
     }
 

@@ -16,7 +16,6 @@ public class EncodingService {
     private final EncodedImagesRepository encodedImageRepository;
     /**
      * Retrieves the encoded images associated with a specific student.
-     *
      * This method retrieves the encoded images from the repository based on the provided matriculation number
      * of the student. It then maps the retrieved encoded images to a list of EncodedImageResponse objects containing
      * the matriculation number and the encoded image data.
