@@ -34,6 +34,8 @@ public class ApplicationUser implements UserDetails {
     private boolean isAccountNonLocked;
     private boolean isCredentialsNonExpired;
     private boolean isEnabled;
+    private String profilePictureId;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return userRole.stream()

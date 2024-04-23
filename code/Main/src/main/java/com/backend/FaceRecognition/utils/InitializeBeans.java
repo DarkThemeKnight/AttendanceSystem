@@ -2,7 +2,7 @@ package com.backend.FaceRecognition.utils;
 
 import com.backend.FaceRecognition.constants.Role;
 import com.backend.FaceRecognition.entities.ApplicationUser;
-import com.backend.FaceRecognition.services.data_persistence_service.ApplicationUserService;
+import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -28,8 +28,15 @@ public class InitializeBeans {
         return args -> {
             log.info("Setting up super user");
             ApplicationUser user = new ApplicationUser("0001", "Omotola",
-                    "David", "Ayanfeoluwa",
-                    "ayanfeoluwadafidi@outlook.com",passwordEncoder.encode("141066"), Collections.singleton(Role.ROLE_SUPER_ADMIN), true, true, true, true);
+                    "David",
+                    "Ayanfeoluwa",
+                    "ayanfeoluwadafidi@outlook.com",passwordEncoder.encode("141066"),
+                    Collections.singleton(Role.ROLE_SUPER_ADMIN),
+                    true,
+                    true,
+                    true,
+                    true,
+                    null);
             userService.create(user);
             log.info("Successfully setup application owner");
         };

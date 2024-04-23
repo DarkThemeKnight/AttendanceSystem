@@ -10,6 +10,7 @@ import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
 import com.backend.FaceRecognition.utils.AttendanceRecordResponse;
+import com.backend.FaceRecognition.utils.AvailableRecords;
 import com.backend.FaceRecognition.utils.StudentAttendanceRecordResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
@@ -49,8 +50,11 @@ public class AttendanceService {
     private final JwtService jwtService;
     private final StudentService studentService;
     private final SuspensionRepository suspensionRepository;
-    public AttendanceService(AttendanceSetupPolicyRepository attendanceSetupRepository, AttendanceRepository attendanceRepository, FaceRecognitionService faceRecognitionService,
-                             SubjectService subjectService, JwtService jwtService, StudentService studentService, SuspensionRepository suspensionRepository) {
+
+    public AttendanceService(AttendanceSetupPolicyRepository attendanceSetupRepository,
+            AttendanceRepository attendanceRepository, FaceRecognitionService faceRecognitionService,
+            SubjectService subjectService, JwtService jwtService, StudentService studentService,
+            SuspensionRepository suspensionRepository) {
         this.attendanceSetupRepository = attendanceSetupRepository;
         this.attendanceRepository = attendanceRepository;
         this.faceRecognitionService = faceRecognitionService;
@@ -60,23 +64,23 @@ public class AttendanceService {
         this.suspensionRepository = suspensionRepository;
     }
 
-    public ResponseEntity<String> initializeAttendance(String subjectCode, String authorization,int duration) {
-        List<Attendance> attendances = attendanceRepository.findBySubjectIdAndDate(subjectCode,LocalDate.now());
-        if (!attendances.isEmpty()){
+    public ResponseEntity<String> initializeAttendance(String subjectCode, String authorization, int duration) {
+        List<Attendance> attendances = attendanceRepository.findBySubjectIdAndDate(subjectCode, LocalDate.now());
+        if (!attendances.isEmpty()) {
             return ResponseEntity.badRequest().body("attendance already initialized");
         }
-        if (duration < 10){
+        if (duration < 10) {
             return ResponseEntity.badRequest().body("Duration at least 10 minutes");
         }
         String jwtToken = jwtService.extractTokenFromHeader(authorization);
-        String id= jwtService.getId(jwtToken);
+        String id = jwtService.getId(jwtToken);
         Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
         if (subjectOptional.isEmpty()) {
             return new ResponseEntity<>("Subject not found", HttpStatus.NOT_FOUND);
         }
         Subject subject = subjectOptional.get();
-        if (subject.getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)){
-            return new ResponseEntity<>("Unauthorized to take attendance",HttpStatus.UNAUTHORIZED);
+        if (subject.getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)) {
+            return new ResponseEntity<>("Unauthorized to take attendance", HttpStatus.UNAUTHORIZED);
         }
         Set<Student> allPossibleAttendees = studentService.getAllStudentsOfferingCourse(subjectCode);
         LocalDate localDate = LocalDate.now();
@@ -99,7 +103,8 @@ public class AttendanceService {
     }
 
     /**
-     * Updates the attendance status for a student in a specific subject based on used
+     * Updates the attendance status for a student in a specific subject based on
+     * used
      * face recognition Algorithm.
      *
      * @param subjectCode   The code of the subject for which attendance is being
@@ -109,26 +114,27 @@ public class AttendanceService {
      * @return A ResponseEntity indicating the result of the attendance update
      *         operation.
      */
-    public ResponseEntity<String> updateAttendanceStatus(String subjectCode, MultipartFile multipartFile, String bearer)
-    {
+    public ResponseEntity<String> updateAttendanceStatus(String subjectCode, MultipartFile multipartFile,
+            String bearer) {
         Optional<AttendanceSetupPolicy> attendanceSetup = attendanceSetupRepository
-                .findBySubjectIdAndAttendanceDate(subjectCode,LocalDate.now());
-        if (attendanceSetup.isEmpty()){
+                .findBySubjectIdAndAttendanceDate(subjectCode, LocalDate.now());
+        if (attendanceSetup.isEmpty()) {
             return ResponseEntity.badRequest().body("Attendance is not initialized yet");
         }
         if (LocalDateTime.now().isAfter(attendanceSetup.get()
                 .getAttendanceDateTime().plusMinutes(attendanceSetup.get()
-                        .getDuration()))){
+                        .getDuration()))) {
             return ResponseEntity.badRequest().body("Time Expired");
         }
         Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
         String jwtToken = jwtService.extractTokenFromHeader(bearer);
-        String id= jwtService.getId(jwtToken);
+        String id = jwtService.getId(jwtToken);
         if (subjectOptional.isEmpty()) {
             return new ResponseEntity<>("Subject not found", HttpStatus.BAD_REQUEST);
         }
-        if (subjectOptional.get().getLecturerInCharge() == null || !subjectOptional.get().getLecturerInCharge().getId().equals(id)){
-            return new ResponseEntity<>("Unauthorized to take attendance",HttpStatus.UNAUTHORIZED);
+        if (subjectOptional.get().getLecturerInCharge() == null
+                || !subjectOptional.get().getLecturerInCharge().getId().equals(id)) {
+            return new ResponseEntity<>("Unauthorized to take attendance", HttpStatus.UNAUTHORIZED);
         }
         ResponseEntity<Student> matriculationNumberResponse = faceRecognitionService.recognizeFace(multipartFile,
                 subjectCode, bearer);
@@ -141,9 +147,10 @@ public class AttendanceService {
         Student std = matriculationNumberResponse.getBody();
         Attendance attendance = attendanceRepository.findByStudentIdAndSubjectIdAndDate(std.getMatriculationNumber(),
                 subjectCode, LocalDate.now());
-        Optional<Suspension> isSuspended= suspensionRepository.findByStudentIdAndSubjectId(std.getMatriculationNumber(),subjectCode);
-        if (isSuspended.isPresent()){
-            return new ResponseEntity<>("Student suspended",HttpStatus.FORBIDDEN);
+        Optional<Suspension> isSuspended = suspensionRepository
+                .findByStudentIdAndSubjectId(std.getMatriculationNumber(), subjectCode);
+        if (isSuspended.isPresent()) {
+            return new ResponseEntity<>("Student suspended", HttpStatus.FORBIDDEN);
         }
         if (attendance == null) {
             return new ResponseEntity<>("Cannot mark attendance anymore", HttpStatus.FORBIDDEN);
@@ -156,54 +163,58 @@ public class AttendanceService {
         return new ResponseEntity<>("Successfully marked attendance: student Id = " + std.getMatriculationNumber(),
                 HttpStatus.OK);
     }
-    public ResponseEntity<AttendanceRecordResponse> getRecord(String subjectCode, LocalDate date,int sort,String bearer) {
+
+    public ResponseEntity<AttendanceRecordResponse> getRecord(String subjectCode, LocalDate date, int sort,
+            String bearer) {
         Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
         if (subjectOptional.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
         Subject subject = subjectOptional.get();
         String jwtToken = jwtService.extractTokenFromHeader(bearer);
-        String id= jwtService.getId(jwtToken);
-        if (subjectOptional.get().getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)){
+        String id = jwtService.getId(jwtToken);
+        if (subjectOptional.get().getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)) {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
         List<Attendance> studentAttendance = attendanceRepository.findBySubjectIdAndDate(subjectCode, date);
-        if (studentAttendance.isEmpty()){
+        if (studentAttendance.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        switch (sort){
-            case 1-> studentAttendance = filterAttendanceByStatus(studentAttendance,AttendanceStatus.PRESENT);
-            case 2-> studentAttendance = filterAttendanceByStatus(studentAttendance,AttendanceStatus.ABSENT);
+        switch (sort) {
+            case 1 -> studentAttendance = filterAttendanceByStatus(studentAttendance, AttendanceStatus.PRESENT);
+            case 2 -> studentAttendance = filterAttendanceByStatus(studentAttendance, AttendanceStatus.ABSENT);
         }
-        AttendanceRecordResponse attendanceRecordResponse = buildAttendanceRecordResponse(subject, date, studentAttendance);
+        AttendanceRecordResponse attendanceRecordResponse = buildAttendanceRecordResponse(subject, date,
+                studentAttendance);
         return ResponseEntity.ok(attendanceRecordResponse);
     }
 
-    public ResponseEntity<ByteArrayResource> getAttendanceExcel(String subjectCode, LocalDate date, int sort, String bearer) {
+    public ResponseEntity<ByteArrayResource> getAttendanceExcel(String subjectCode, LocalDate date, int sort,
+            String bearer) {
         Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
         if (subjectOptional.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
         Subject subject = subjectOptional.get();
         String jwtToken = jwtService.extractTokenFromHeader(bearer);
-        String id= jwtService.getId(jwtToken);
-        if (subjectOptional.get().getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)){
+        String id = jwtService.getId(jwtToken);
+        if (subjectOptional.get().getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)) {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
         List<Attendance> studentAttendance = attendanceRepository.findBySubjectIdAndDate(subjectCode, date);
-        if (studentAttendance.isEmpty()){
+        if (studentAttendance.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        switch (sort){
-            case 1-> studentAttendance = filterAttendanceByStatus(studentAttendance,AttendanceStatus.PRESENT);
-            case 2-> studentAttendance = filterAttendanceByStatus(studentAttendance,AttendanceStatus.ABSENT);
+        switch (sort) {
+            case 1 -> studentAttendance = filterAttendanceByStatus(studentAttendance, AttendanceStatus.PRESENT);
+            case 2 -> studentAttendance = filterAttendanceByStatus(studentAttendance, AttendanceStatus.ABSENT);
         }
         // Create workbook and sheet
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Attendance Records");
         // Create header row
         Row headerRow = sheet.createRow(0);
-        String[] headers = {"Matriculation Number", "Name", "Status"};
+        String[] headers = { "Matriculation Number", "Name", "Status" };
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
@@ -213,12 +224,12 @@ public class AttendanceService {
         int rowNum = 1;
         for (Attendance attendance : studentAttendance) {
             Student student = studentService.getStudentById(attendance.getStudentId()).orElse(null);
-            if (student==null){
+            if (student == null) {
                 return ResponseEntity.badRequest().build();
             }
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue(attendance.getStudentId());
-            row.createCell(1).setCellValue(student.getLastname()+" "+student.getFirstname());
+            row.createCell(1).setCellValue(student.getLastname() + " " + student.getFirstname());
             row.createCell(2).setCellValue(attendance.getStatus().toString());
         }
 
@@ -232,32 +243,36 @@ public class AttendanceService {
         try {
             workbook.write(outputStream);
         } catch (IOException e) {
-            log.error("Error occurred ",e);
+            log.error("Error occurred ", e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         } finally {
             try {
                 workbook.close();
             } catch (IOException e) {
-                log.error("Error occurred ",e);
+                log.error("Error occurred ", e);
             }
         }
         // Return the Excel file as ResponseEntity
         byte[] bytes = outputStream.toByteArray();
         ByteArrayResource resource = new ByteArrayResource(bytes);
         HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.add("Content-Disposition", "attachment; filename=attendance record for "+subjectCode+".xlsx");
+        httpHeaders.add("Content-Disposition", "attachment; filename=attendance record for " + subjectCode + ".xlsx");
         return ResponseEntity.ok()
                 .headers(httpHeaders)
                 .contentLength(bytes.length)
-                .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentType(org.springframework.http.MediaType
+                        .parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(resource);
     }
+
     private List<Attendance> filterAttendanceByStatus(List<Attendance> attendanceList, AttendanceStatus status) {
         return attendanceList.stream()
                 .filter(attendance -> attendance.getStatus().equals(status))
                 .collect(Collectors.toList());
     }
-    private AttendanceRecordResponse buildAttendanceRecordResponse(Subject subject,  LocalDate date, List<Attendance> attendanceList) {
+
+    private AttendanceRecordResponse buildAttendanceRecordResponse(Subject subject, LocalDate date,
+            List<Attendance> attendanceList) {
         AttendanceRecordResponse attendanceRecordResponse = new AttendanceRecordResponse();
         attendanceRecordResponse.setTitle(subject.getSubjectTitle());
         attendanceRecordResponse.setSubjectCode(subject.getSubjectCode());
@@ -267,10 +282,10 @@ public class AttendanceService {
         }
         return attendanceRecordResponse;
     }
-    public ResponseEntity<StudentAttendanceRecordResponse> viewAttendanceRecord
-            (String bearer) {
-        ResponseEntity<List<Attendance>> response =
-                getStudentRecord(jwtService.getId(jwtService.extractTokenFromHeader(bearer)));
+
+    public ResponseEntity<StudentAttendanceRecordResponse> viewAttendanceRecord(String bearer) {
+        ResponseEntity<List<Attendance>> response = getStudentRecord(
+                jwtService.getId(jwtService.extractTokenFromHeader(bearer)));
         if (response.getStatusCode() != HttpStatus.OK) {
             return ResponseEntity.notFound().build();
         }
@@ -278,28 +293,30 @@ public class AttendanceService {
         if (attendanceList == null) {
             return ResponseEntity.internalServerError().build();
         }
-        List<StudentAttendanceRecordResponse.DefaultResponse> getDefault =
-                attendanceList.stream().filter(Objects::nonNull).map(attendance ->
-                {
-                    Subject subject= subjectService.findSubjectByCode(attendance.getSubjectId()).orElse(null);
-                    return subject!=null?new StudentAttendanceRecordResponse.DefaultResponse(subject.getSubjectCode(),subject.getSubjectTitle(),
-                            attendance.getDate(), attendance.getStatus()):null;
-                }
-                ).toList();
+        List<StudentAttendanceRecordResponse.DefaultResponse> getDefault = attendanceList.stream()
+                .filter(Objects::nonNull).map(attendance -> {
+                    Subject subject = subjectService.findSubjectByCode(attendance.getSubjectId()).orElse(null);
+                    return subject != null
+                            ? new StudentAttendanceRecordResponse.DefaultResponse(subject.getSubjectCode(),
+                                    subject.getSubjectTitle(),
+                                    attendance.getDate(), attendance.getStatus())
+                            : null;
+                }).toList();
         return ResponseEntity.ok(new StudentAttendanceRecordResponse(
                 attendanceList.get(0).getStudentId(), getDefault));
     }
-    public ResponseEntity<ByteArrayResource> printAttendanceRecord(String bearer){
-        ResponseEntity<StudentAttendanceRecordResponse> response =
-                viewAttendanceRecord(bearer);
-        if (response.getStatusCode() != HttpStatus.OK){
+
+    public ResponseEntity<ByteArrayResource> printAttendanceRecord(String bearer) {
+        ResponseEntity<StudentAttendanceRecordResponse> response = viewAttendanceRecord(bearer);
+        if (response.getStatusCode() != HttpStatus.OK) {
             return ResponseEntity.notFound().build();
         }
-        if (response.getBody() == null){
+        if (response.getBody() == null) {
             return ResponseEntity.noContent().build();
         }
         return buildExcel(response.getBody());
     }
+
     private ResponseEntity<ByteArrayResource> buildExcel(StudentAttendanceRecordResponse body) {
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Attendance Record");
@@ -325,18 +342,37 @@ public class AttendanceService {
             workbook.write(outputStream);
             workbook.close();
         } catch (IOException e) {
-            log.error("Error occurred ",e);
+            log.error("Error occurred ", e);
         }
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDispositionFormData("filename", "attendance_record.xlsx");
         return new ResponseEntity<>(new ByteArrayResource(outputStream.toByteArray()), headers, HttpStatus.OK);
     }
-    public ResponseEntity<List<Attendance>> getStudentRecord(String studentId){
-        List<Attendance> attendances =   attendanceRepository.findByStudentId(studentId);
-        if (attendances == null || attendances.isEmpty()){
+
+    public ResponseEntity<List<Attendance>> getStudentRecord(String studentId) {
+        List<Attendance> attendances = attendanceRepository.findByStudentId(studentId);
+        if (attendances == null || attendances.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(attendances);
+    }
+
+    public ResponseEntity<AvailableRecords> getRecord(String subjectCode, String bearer) {
+        Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
+        if (subjectOptional.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        Subject subject = subjectOptional.get();
+        String jwtToken = jwtService.extractTokenFromHeader(bearer);
+        String id = jwtService.getId(jwtToken);
+        if (subjectOptional.get().getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        List<Attendance> studentAttendance = attendanceRepository.findByStudentId(subjectCode);
+        Set<AvailableRecords.Data> set = studentAttendance.stream()
+                .map(ob -> new AvailableRecords.Data(ob.getDate().toString())).collect(Collectors.toSet());
+
+        return ResponseEntity.ok(new AvailableRecords(set));
     }
 }

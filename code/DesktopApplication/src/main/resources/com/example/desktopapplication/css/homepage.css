@@ -1,0 +1,37 @@
+/* Dracula Theme */
+.root {
+  -fx-background-color: #ffffff; /* White background */
+  -fx-text-fill: #0366d6; /* Blue text color */
+}
+
+.text-field,
+.password-field {
+  -fx-background-color: #ffffff; /* White background */
+  -fx-text-fill: #0366d6; /* Blue text color */
+  -fx-background-radius: 5px; /* Rounded corners */
+  -fx-effect: dropshadow(
+    three-pass-box,
+    rgba(0, 0, 0, 0.2),
+    10,
+    0,
+    0,
+    0
+  ); /* Box shadow */
+}
+
+.button {
+  -fx-background-color: #0366d6; /* Blue button background */
+  -fx-text-fill: #ffffff; /* White button text color */
+}
+
+.button:hover {
+  -fx-background-color: #005cc5; /* Darker blue on hover */
+}
+.text-link {
+  -fx-fill: #0366d6; /* Blue link color */
+  -fx-underline: true; /* Underline effect */
+}
+
+.text-link:hover {
+  -fx-fill: red; /* Darker blue color on hover */
+}

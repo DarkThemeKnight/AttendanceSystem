@@ -1,4 +1,4 @@
-package com.backend.FaceRecognition.services.data_persistence_service;
+package com.backend.FaceRecognition.services.application_user;
 
 import com.backend.FaceRecognition.entities.ApplicationUser;
 import com.backend.FaceRecognition.repository.ApplicationUserRepository;
