@@ -1,5 +1,7 @@
 package com.backend.FaceRecognition.services.jwt_service;
 import com.backend.FaceRecognition.entities.ApplicationUser;
+import com.backend.FaceRecognition.entities.ResetPasswordToken;
+import com.backend.FaceRecognition.repository.ResetPasswordTokenSaltRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -10,8 +12,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import java.security.Key;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Slf4j
@@ -19,7 +23,13 @@ import java.util.function.Function;
 public class JwtService {
         @Value("${token}")
         private String tokenSecretKey;
-        public String extractTokenFromHeader(String authorizationHeader) {
+        private final ResetPasswordTokenSaltRepository resetPasswordTokenSaltRepository;
+
+    public JwtService(ResetPasswordTokenSaltRepository resetPasswordTokenSaltRepository) {
+        this.resetPasswordTokenSaltRepository = resetPasswordTokenSaltRepository;
+    }
+
+    public String extractTokenFromHeader(String authorizationHeader) {
             if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
                 return authorizationHeader.substring(7); // Extract the token excluding "Bearer "
             } else {
@@ -48,6 +58,23 @@ public class JwtService {
                     .setExpiration(new Date(date.getTime()+(1000*60*60*6))) //6 hrs
                     .signWith(getSecretKey(), SignatureAlgorithm.HS256)
                     .compact();
+        }
+        public String generateTemporaryToken(Map<String,Object> map, String userId)
+        {
+        String salt = UUID.randomUUID().toString();
+        ResetPasswordToken resetPasswordToken = new ResetPasswordToken();
+        resetPasswordToken.setSalt(salt);
+        resetPasswordToken.setExpiryDateTime(LocalDateTime.now().plusMinutes(10));
+        resetPasswordToken.setUserId(userId);
+        resetPasswordTokenSaltRepository.save(resetPasswordToken);
+        Date date = new Date(System.currentTimeMillis());
+        return Jwts.builder()
+                .setClaims(map)
+                .setSubject(userId+salt)
+                .setIssuedAt(date)
+                .setExpiration(new Date(System.currentTimeMillis() + (10 * 60 * 1000))) // 10 minutes
+                .signWith(getSecretKey(), SignatureAlgorithm.HS256)
+                .compact();
         }
         private boolean isExpired(String tokenSecretKey){
             return extractClaim(tokenSecretKey,Claims::getExpiration).before(new Date(System.currentTimeMillis()));

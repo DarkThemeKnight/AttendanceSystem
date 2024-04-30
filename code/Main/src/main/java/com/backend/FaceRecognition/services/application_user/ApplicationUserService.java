@@ -2,7 +2,10 @@ package com.backend.FaceRecognition.services.application_user;
 
 import com.backend.FaceRecognition.entities.ApplicationUser;
 import com.backend.FaceRecognition.repository.ApplicationUserRepository;
+import com.backend.FaceRecognition.utils.ResetPassword;
+import com.backend.FaceRecognition.utils.Response;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -18,6 +21,9 @@ public class ApplicationUserService {
     }
     public Optional<ApplicationUser> findUser(String userId){
         return applicationUserRepository.findById(userId);
+    }
+    public java.util.List<ApplicationUser> findAllUsers(){
+        return applicationUserRepository.findAll();
     }
     /**
      * Creates a new application user.
@@ -69,9 +75,14 @@ public class ApplicationUserService {
         // User doesn't exist, return not found status
         new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
-
-
-
-
+    public ResponseEntity<Response> resetPassword(String userId, ResetPassword resetPassword) {
+        ApplicationUser applicationUser = applicationUserRepository.findById(userId).orElse(null);
+        if (applicationUser == null){
+            return ResponseEntity.notFound().build();
+        }
+        applicationUser.setPassword(resetPassword.getNewPassword());
+        applicationUserRepository.save(applicationUser);
+        return ResponseEntity.ok(new Response("Password changed successfully"));
+    }
 
 }

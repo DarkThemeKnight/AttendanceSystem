@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 @RestController
 @RequestMapping("api/v1/attendance")
@@ -28,17 +29,15 @@ public class LecturerController {
         this.attendanceService = attendanceService;
         this.lecturerService = lecturerService;
     }
-
-    @PostMapping("/initialize/{subject_code}")
-    public ResponseEntity<Response> initializeAttendance(@PathVariable("subject_code") String subjectCode,
-            @RequestParam("duration") int duration,
+    @PostMapping("/initialize")
+    public ResponseEntity<Response> initializeAttendance(
+            @RequestParam String subjectCode,
+            @RequestParam int duration,
             HttpServletRequest request) {
-        // Delegate the initialization process to the AttendanceService
         var r = attendanceService.initializeAttendance(subjectCode,
                 request.getHeader("Authorization"), duration);
         return new ResponseEntity<>(new Response(r.getBody()), r.getStatusCode());
     }
-
     @PostMapping("/update/{subject_code}")
     public ResponseEntity<Response> updateAttendanceStatus(@PathVariable("subject_code") String subjectCode,
             @RequestParam MultipartFile file,
@@ -48,47 +47,48 @@ public class LecturerController {
                 request.getHeader("Authorization"));
         return new ResponseEntity<>(new Response(response.getBody()), response.getStatusCode());
     }
-
-    @GetMapping("/record/{subject_code}")
-    public ResponseEntity<AttendanceRecordResponse> getRecord(@PathVariable("subject_code") String subjectCode,
-            @RequestParam("date") String date,
+    @GetMapping("/record")
+    public ResponseEntity<AttendanceRecordResponse> getRecord(@RequestParam String subjectCode,
+            @RequestParam String date,
             @RequestParam("sort_id") int id,
             @RequestHeader("Authorization") String bearer) {
-        LocalDate localDate = LocalDate.parse(date);
-        return attendanceService.getRecord(subjectCode, localDate, id, bearer);
+        try {
+            LocalDate localDate = LocalDate.parse(date);
+            return attendanceService.getRecord(subjectCode, localDate, id, bearer);
+        }catch (DateTimeParseException e){
+            return ResponseEntity.badRequest().build();
+        }
     }
 
-    @GetMapping("/available-records{subject_code}")
-    public ResponseEntity<AvailableRecords> getAvailableRecord(@PathVariable("subject_code") String subjectCode,
+    @GetMapping("/available-records")
+    public ResponseEntity<AvailableRecords> getAvailableRecord(@RequestParam String subjectCode,
             @RequestHeader("Authorization") String bearer) {
         return attendanceService.getRecord(subjectCode, bearer);
     }
 
-    @PostMapping("/clear-subject-students")
-    public ResponseEntity<Response> clearSubjectStudents(@RequestParam("subject_code") String subjectCode,
+    @PostMapping("/clear")
+    public ResponseEntity<Response> clearSubjectStudents(@RequestParam String subjectCode,
             @RequestHeader("Authorization") String bearer) {
         return build(lecturerService.clearSubjectStudents(subjectCode, bearer));
     }
-
-    @PutMapping("/add-student-to-subject")
-    public ResponseEntity<Response> addStudentToSubject(@RequestBody StudentRequest requestSet,
-            @RequestParam("subject_code") String subjectCode,
+    @PostMapping("/add")
+    public ResponseEntity<Response> addStudentToSubject(
+            @RequestBody StudentRequest requestSet,
+            @RequestParam String subjectCode,
             @RequestHeader("Authorization") String bearer) {
         return lecturerService.addStudentToSubject(bearer, requestSet, subjectCode);
     }
-
     private ResponseEntity<Response> build(ResponseEntity<String> response) {
         return new ResponseEntity<>(new Response(response.getBody()), response.getStatusCode());
     }
 
     @PostMapping("/suspend")
     public ResponseEntity<Response> suspendStudentFromMarkingAttendance(
-            @RequestParam("subject_code") String subjectCode,
-            @RequestParam("student_id") String studentId,
+            @RequestParam String subjectCode,
+            @RequestParam String studentId,
             @RequestHeader("Authorization") String bearer) {
         return lecturerService.suspendStudentFromMarkingAttendance(bearer, subjectCode, studentId);
     }
-
     @GetMapping("/student-record")
     private ResponseEntity<StudentAttendanceRecordResponse> viewAttendanceRecord(
             @RequestHeader("Authorization") String bearer,
@@ -96,10 +96,9 @@ public class LecturerController {
             String subjectCode) {
         return lecturerService.viewAttendanceRecord(bearer, studentId, subjectCode);
     }
-
-    @GetMapping("/print-record/{subject_code}")
-    public ResponseEntity<ByteArrayResource> getRecordExcelSheet(@PathVariable("subject_code") String subjectCode,
-            @RequestParam("date") String date,
+    @GetMapping("/print")
+    public ResponseEntity<ByteArrayResource> getRecordExcelSheet(@RequestParam String subjectCode,
+            @RequestParam String date,
             @RequestParam("sort_id") int id,
             @RequestHeader("Authorization") String bearer) {
         LocalDate localDate = LocalDate.parse(date);

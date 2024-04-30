@@ -10,5 +10,5 @@ import java.time.LocalDate;
 public class NotificationRequest {
     private String title;
     private String content;
-    private LocalDate validUntil;
+    private String validUntil;
 }

@@ -12,6 +12,7 @@ import com.backend.FaceRecognition.services.subject.SubjectService;
 import com.backend.FaceRecognition.utils.AttendanceRecordResponse;
 import com.backend.FaceRecognition.utils.AvailableRecords;
 import com.backend.FaceRecognition.utils.StudentAttendanceRecordResponse;
+import com.backend.FaceRecognition.utils.UniqueCodeGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
@@ -91,15 +92,16 @@ public class AttendanceService {
                         AttendanceStatus.ABSENT))
                 .toList();
         AttendanceSetupPolicy setup = AttendanceSetupPolicy.builder()
+                .code(UniqueCodeGenerator.generateCode(10))
                 .attendanceDateTime(LocalDateTime.now())
                 .duration(duration)
                 .subjectId(subjectCode)
                 .attendanceDate(localDate)
                 .attendanceDateTime(LocalDateTime.now().plusMinutes(duration))
                 .build();
-        attendanceSetupRepository.save(setup);
+        setup = attendanceSetupRepository.save(setup);
         attendanceRepository.saveAll(studentAttendance);
-        return new ResponseEntity<>("Initialized Attendance", HttpStatus.OK);
+        return new ResponseEntity<>("code="+setup.getCode(), HttpStatus.OK);
     }
 
     /**
@@ -283,7 +285,7 @@ public class AttendanceService {
         return attendanceRecordResponse;
     }
 
-    public ResponseEntity<StudentAttendanceRecordResponse> viewAttendanceRecord(String bearer) {
+    public ResponseEntity<StudentAttendanceRecordResponse> viewAttendanceRecord(String bearer,String code) {
         ResponseEntity<List<Attendance>> response = getStudentRecord(
                 jwtService.getId(jwtService.extractTokenFromHeader(bearer)));
         if (response.getStatusCode() != HttpStatus.OK) {
@@ -294,20 +296,24 @@ public class AttendanceService {
             return ResponseEntity.internalServerError().build();
         }
         List<StudentAttendanceRecordResponse.DefaultResponse> getDefault = attendanceList.stream()
-                .filter(Objects::nonNull).map(attendance -> {
+                .filter(Objects::nonNull)
+                .filter(v-> v.getSubjectId().equalsIgnoreCase(code))
+                .map(attendance -> {
                     Subject subject = subjectService.findSubjectByCode(attendance.getSubjectId()).orElse(null);
                     return subject != null
-                            ? new StudentAttendanceRecordResponse.DefaultResponse(subject.getSubjectCode(),
-                                    subject.getSubjectTitle(),
-                                    attendance.getDate(), attendance.getStatus())
+                            ? new StudentAttendanceRecordResponse
+                                .DefaultResponse(   subject.getSubjectCode(),
+                                                    subject.getSubjectTitle(),
+                                                    attendance.getDate(),
+                                                    attendance.getStatus())
                             : null;
                 }).toList();
         return ResponseEntity.ok(new StudentAttendanceRecordResponse(
                 attendanceList.get(0).getStudentId(), getDefault));
     }
 
-    public ResponseEntity<ByteArrayResource> printAttendanceRecord(String bearer) {
-        ResponseEntity<StudentAttendanceRecordResponse> response = viewAttendanceRecord(bearer);
+    public ResponseEntity<ByteArrayResource> printAttendanceRecord(String bearer, String code) {
+        ResponseEntity<StudentAttendanceRecordResponse> response = viewAttendanceRecord(bearer,code);
         if (response.getStatusCode() != HttpStatus.OK) {
             return ResponseEntity.notFound().build();
         }
@@ -357,7 +363,6 @@ public class AttendanceService {
         }
         return ResponseEntity.ok(attendances);
     }
-
     public ResponseEntity<AvailableRecords> getRecord(String subjectCode, String bearer) {
         Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
         if (subjectOptional.isEmpty()) {
@@ -369,10 +374,10 @@ public class AttendanceService {
         if (subjectOptional.get().getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)) {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
-        List<Attendance> studentAttendance = attendanceRepository.findByStudentId(subjectCode);
-        Set<AvailableRecords.Data> set = studentAttendance.stream()
-                .map(ob -> new AvailableRecords.Data(ob.getDate().toString())).collect(Collectors.toSet());
-
+        List<AttendanceSetupPolicy> attendanceSetupPolicyList = attendanceSetupRepository.findAllBySubjectId(subjectCode);
+        Set<AvailableRecords.Data> set = attendanceSetupPolicyList.stream()
+                .map(ob -> new AvailableRecords.Data(ob.getAttendanceDate().toString())).collect(Collectors.toSet());
         return ResponseEntity.ok(new AvailableRecords(set));
     }
+
 }

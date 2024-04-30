@@ -16,8 +16,7 @@ import java.time.LocalDateTime;
 @Builder
 public class AttendanceSetupPolicy {
    @Id
-   @GeneratedValue(strategy = GenerationType.IDENTITY)
-   private Integer id;
+   private String code;
    @Column(name = "subject_id")
    private String subjectId;
    private int duration;

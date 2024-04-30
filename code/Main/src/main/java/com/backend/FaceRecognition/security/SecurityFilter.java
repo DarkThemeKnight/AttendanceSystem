@@ -1,5 +1,6 @@
 package com.backend.FaceRecognition.security;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -27,6 +28,7 @@ public class SecurityFilter {
 
     @Bean
     public DefaultSecurityFilterChain securityFilterChain(HttpSecurity security) {
+
         DefaultSecurityFilterChain filterChain = null;
         try {
             filterChain = security.csrf(AbstractHttpConfigurer::disable)

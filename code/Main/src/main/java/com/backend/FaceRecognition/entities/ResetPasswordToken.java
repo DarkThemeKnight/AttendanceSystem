@@ -8,15 +8,17 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Entity
+import java.time.LocalDateTime;
+
 @NoArgsConstructor
+@Entity
 @AllArgsConstructor
 @Data
-public class Suspension {
+public class ResetPasswordToken {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    private String studentId;
-    private String subjectId;
+    private String salt;
+    private String userId;
+    private LocalDateTime expiryDateTime;
 }
-

@@ -8,8 +8,12 @@ import com.backend.FaceRecognition.services.authorization_service.student_servic
 import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
+import com.backend.FaceRecognition.utils.subject.AllSubjects;
+import com.backend.FaceRecognition.utils.subject.AllSubjectsNoStudentData;
 import com.backend.FaceRecognition.utils.subject.SubjectRequest;
 import com.backend.FaceRecognition.utils.subject.SubjectResponse;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,15 +34,16 @@ public class AdminService {
     private final JwtService jwtService;
 
     public AdminService(ApplicationUserService applicationUserService, SubjectService subjectService,
-                        StudentService studentService, JwtService jwtService) {
+            StudentService studentService, JwtService jwtService) {
         this.applicationUserService = applicationUserService;
         this.subjectService = subjectService;
         this.studentService = studentService;
         this.jwtService = jwtService;
     }
-    public ResponseEntity<String> lockAccount(String id,String bearer) {
+
+    public ResponseEntity<String> lockAccount(String id, String bearer) {
         String jwt_token = jwtService.extractTokenFromHeader(bearer);
-        String user_id =jwtService.getId(jwt_token);
+        String user_id = jwtService.getId(jwt_token);
         ApplicationUser requestingUser = applicationUserService.findUser(user_id).get();
         Set<Role> roles = requestingUser.getUserRole();
         Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
@@ -54,7 +59,7 @@ public class AdminService {
             } else {
                 return ResponseEntity.notFound().build();
             }
-        }else {
+        } else {
             if (userOptional.isPresent()) {
                 ApplicationUser user = userOptional.get();
                 if (user.hasRole(Role.ROLE_ADMIN)) {
@@ -69,7 +74,8 @@ public class AdminService {
             }
         }
     }
-    public ResponseEntity<String> unlockAccount(String id,String bearer) {
+
+    public ResponseEntity<String> unlockAccount(String id, String bearer) {
         String jwt_token = jwtService.extractTokenFromHeader(bearer);
         String user_id = jwtService.getId(jwt_token);
         ApplicationUser requestingUser = applicationUserService.findUser(user_id).get();
@@ -87,13 +93,13 @@ public class AdminService {
             } else {
                 return ResponseEntity.notFound().build();
             }
-        }else {
+        } else {
             if (userOptional.isPresent()) {
                 ApplicationUser user = userOptional.get();
                 if (user.hasRole(Role.ROLE_SUPER_ADMIN)) {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to unlock account.");
                 }
-                user.setEnabled(true);  // Corrected to set the account as enabled
+                user.setEnabled(true); // Corrected to set the account as enabled
                 applicationUserService.update(user);
                 return ResponseEntity.ok("Account unlocked successfully.");
             } else {
@@ -101,28 +107,69 @@ public class AdminService {
             }
         }
     }
+
     public ResponseEntity<String> deleteSubject(String request) {
         Optional<Subject> subject1 = subjectService.findSubjectByCode(request);
         if (subject1.isEmpty()) {
             return new ResponseEntity<>("Subject does not exist", HttpStatus.CONFLICT);
         }
+        Set<Student> students = studentService.getAllStudentsOfferingCourse(request);
+        students.forEach(student -> {
+            Set<Subject> subjects = student.getSubjects();
+            java.util.Iterator<Subject> iterator = subjects.iterator();
+            while (iterator.hasNext()) {
+                Subject subject = iterator.next();
+                if (subject.getSubjectCode().equals(request)) {
+                    iterator.remove(); // Remove the subject from the set
+                }
+            }
+        });
+        studentService.saveAll(students);
         subjectService.deleteSubjectByCode(request);
         return new ResponseEntity<>("Deleted successfully", HttpStatus.OK);
     }
+
+    public ResponseEntity<Object> getAllSubject(boolean no_student) {
+        List<Subject> subjects = subjectService.findAll();
+        if (!no_student) {
+            return ResponseEntity.ok(new AllSubjects(subjects.stream().map(this::parse).collect(Collectors.toList())));
+        }
+        List<AllSubjectsNoStudentData.SubjectResponse> myList = subjects.stream()
+                .filter(v -> v != null)
+                .map(s -> AllSubjectsNoStudentData.SubjectResponse
+                        .builder()
+                        .subjectTitle(s.getSubjectTitle())
+                        .idLecturerInCharge(s.getLecturerInCharge() == null ? "" : s.getLecturerInCharge().getId())
+                        .subjectCode(s.getSubjectCode())
+                        .build())
+                .toList();
+        AllSubjectsNoStudentData allSubjectsNoStudentData = new AllSubjectsNoStudentData(myList);
+        try {
+            String data = new ObjectMapper().writeValueAsString(allSubjectsNoStudentData);
+            return ResponseEntity.ok(data);
+        } catch (JsonProcessingException e) {
+            log.error("Exception occurred", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     public ResponseEntity<SubjectResponse> getSubject(String subjectCode) {
         Optional<Subject> optionalSubject = subjectService.findSubjectByCode(subjectCode);
         log.info("getting subject");
         if (optionalSubject.isEmpty()) {
-            return new ResponseEntity<>(new SubjectResponse("message"),
+            return new ResponseEntity<>(new SubjectResponse("Subject not found"),
                     HttpStatus.NOT_FOUND);
         }
         SubjectResponse response = parse(optionalSubject.get());
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
     public SubjectResponse parse(Subject subject) {
         SubjectResponse response = new SubjectResponse();
         response.setSubjectCode(subject.getSubjectCode());
         response.setSubjectTitle(subject.getSubjectTitle());
+        response.setIdLecturerInCharge(
+                subject.getLecturerInCharge() == null ? "" : subject.getLecturerInCharge().getId());
         Set<Student> students = studentService
                 .getAllStudentsOfferingCourse(subject.getSubjectCode());
         // log.info("size {}",students.size());
@@ -134,6 +181,7 @@ public class AdminService {
         }
         return response;
     }
+
     public ResponseEntity<String> clearAllStudentSubjects() {
         List<Student> students = studentService.getAllStudents();
         students.forEach(Student::clear);
@@ -158,12 +206,13 @@ public class AdminService {
         }
         Subject subject = subject1.get();
         subject.setSubjectCode(request.getSubjectCode());
-        String title = request.getSubjectTitle()==null?subject.getSubjectTitle():request.getSubjectTitle();
+        String title = request.getSubjectTitle() == null ? subject.getSubjectTitle() : request.getSubjectTitle();
         subject.setSubjectTitle(title);
         subject.setLecturerInCharge(user);
         subjectService.save(subject);
         return new ResponseEntity<>("Saved successfully", HttpStatus.OK);
     }
+
     public Subject parse(SubjectRequest request) {
         ApplicationUser user = null;
         if (request.getIdLecturerInCharge() != null) {
@@ -192,6 +241,5 @@ public class AdminService {
         subjectService.save(subject);
         return new ResponseEntity<>("Saved successfully", HttpStatus.OK);
     }
-
 
 }

@@ -2,10 +2,14 @@ package com.backend.FaceRecognition.services.authentication_service;
 
 import com.backend.FaceRecognition.constants.Role;
 import com.backend.FaceRecognition.entities.ApplicationUser;
+import com.backend.FaceRecognition.entities.ResetPasswordToken;
 import com.backend.FaceRecognition.entities.Student;
+import com.backend.FaceRecognition.repository.ResetPasswordTokenSaltRepository;
 import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
-import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
+import com.backend.FaceRecognition.services.jwt_service.JwtService;
+import com.backend.FaceRecognition.services.mail.MailService;
+import com.backend.FaceRecognition.utils.ResetPassword;
 import com.backend.FaceRecognition.utils.Response;
 import com.backend.FaceRecognition.utils.application_user.ApplicationUserRequest;
 import com.backend.FaceRecognition.utils.authentication.AuthenticationRequest;
@@ -15,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Optional;
@@ -27,13 +33,17 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final StudentService studentService;
+    private final MailService mailService;
+    private final ResetPasswordTokenSaltRepository resetPasswordTokenSaltRepository;
 
     public AuthenticationService(ApplicationUserService applicationUserService, JwtService jwtService,
-            PasswordEncoder passwordEncoder, StudentService studentService) {
+                                 PasswordEncoder passwordEncoder, StudentService studentService, MailService mailService, ResetPasswordTokenSaltRepository resetPasswordTokenSaltRepository) {
         this.applicationUserService = applicationUserService;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.studentService = studentService;
+        this.mailService = mailService;
+        this.resetPasswordTokenSaltRepository = resetPasswordTokenSaltRepository;
     }
 
     public ResponseEntity<Response> register(ApplicationUserRequest applicationUser, String type) {
@@ -118,9 +128,14 @@ public class AuthenticationService {
      */
     public ResponseEntity<AuthenticationResponse> login(AuthenticationRequest request) {
         Optional<ApplicationUser> userOptional = applicationUserService.findUser(request.getId());
+        if (userOptional.isEmpty()){
+            log.info("Cannot find user");
+        }
         if (userOptional.isPresent()) {
             ApplicationUser user = userOptional.get();
+            log.info("User found => {}",user.getId());
             if (!user.isEnabled()) {
+                log.warn("Locked account of id => {} is trying to access", request.getId());
                 return new ResponseEntity<>(new AuthenticationResponse("Locked Account", null, new HashSet<>()),
                         HttpStatus.LOCKED);
             }
@@ -128,6 +143,7 @@ public class AuthenticationService {
                 user.setCredentialsNonExpired(true);
                 applicationUserService.update(user);
                 String token = jwtService.generate(new HashMap<>(), user);
+                log.info(("Successful login {}"), request.getId());
                 return new ResponseEntity<>(new AuthenticationResponse("Login successfully", token, user.getUserRole()),
                         HttpStatus.OK);
             }
@@ -166,5 +182,26 @@ public class AuthenticationService {
         }
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
+
+    public ResponseEntity<Response> forgotPassword(String id) {
+       Response response = mailService.sendForgotPasswordResetLink(id);
+       if (response.getMessage().equalsIgnoreCase(HttpStatus.NOT_FOUND.name())){
+           return new ResponseEntity<>(new Response("User not found"),HttpStatus.NOT_FOUND);
+       }
+       return ResponseEntity.ok(new Response("Email Sent Successfully"));
+    }
+
+    public ResponseEntity<Response> resetPassword(String token, ResetPassword resetPassword) {
+        Optional<ResetPasswordToken> resetPasswordTokenOptional = resetPasswordTokenSaltRepository.findBySalt(token);
+        if (resetPasswordTokenOptional.isEmpty()){
+            return ResponseEntity.badRequest().build();
+        }
+        ResetPasswordToken val = resetPasswordTokenOptional.get();
+        if (LocalDateTime.now().isAfter(val.getExpiryDateTime())){
+            return  ResponseEntity.badRequest().body(new Response("Link Expired"));
+        }
+        return applicationUserService.resetPassword(val.getUserId(),resetPassword);
+    }
+
 
 }

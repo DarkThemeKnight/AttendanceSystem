@@ -4,6 +4,7 @@ import com.backend.FaceRecognition.entities.Subject;
 import com.backend.FaceRecognition.repository.SubjectRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -20,5 +21,8 @@ public class SubjectService {
     public void save(Subject subject) {subjectRepository.save(subject);}
     public void deleteSubjectByCode(String subjectCode) {
         subjectRepository.deleteById(subjectCode);
+    }
+    public List<Subject> findAll(){
+        return subjectRepository.findAll();
     }
 }

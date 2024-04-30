@@ -66,9 +66,7 @@ public class LecturerService {
         if (suspensionRepository.findByStudentIdAndSubjectId(studentId,subjectCode).isPresent()){
             return ResponseEntity.status(HttpStatus.CONFLICT).body(new Response("Already suspended"));
         }
-        Suspension suspension = new Suspension();
-        suspension.setStudentId(studentId);
-        suspension.setSubjectId(subjectCode);
+        Suspension suspension = new Suspension(null,studentId,subjectCode);
         suspensionRepository.save(suspension);
         return ResponseEntity.ok(new Response("Suspended successfully"));
     }

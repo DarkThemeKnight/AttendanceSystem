@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface SuspensionRepository extends JpaRepository<Suspension, Long> {
+public interface SuspensionRepository extends JpaRepository<Suspension, Integer> {
 
     Optional<Suspension> findByStudentIdAndSubjectId(String studentId, String subjectId);
 

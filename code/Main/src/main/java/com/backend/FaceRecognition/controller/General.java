@@ -20,6 +20,7 @@ public class General {
         this.notificationRepository = notificationRepository;
         this.scheduleService = scheduleService;
     }
+
     @GetMapping("/get-notifications")
     private ResponseEntity<NotificationResponse> getMyNotifications(){
         List<Notification> notifications = notificationRepository.findAll();
