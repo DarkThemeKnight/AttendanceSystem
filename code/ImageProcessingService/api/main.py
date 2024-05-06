@@ -26,11 +26,10 @@ async def image_processing(student_id: str = Query(..., title="Student ID"), fil
         face_locations = face_recognition.face_locations(img)
         encode = face_recognition.face_encodings(img, face_locations)
         if(len(encode) != 1):
-            print("invalid")
+    
             return EncodedImage(message= "Invalid Amount of Faces detected", encoded_image = None)
         
         encoded =  EncodedImage(message= "Success", encoded_image= encode[0])
-        print(encoded)
         return encoded
     except Exception as e:
         raise HTTPException(status_code=400, detail="Error processing file")
@@ -82,3 +81,4 @@ async def recognize_face(authorization: str = Header(None), subject_id: str = Qu
     # If no match found
     print("No match found for the recognized face")
     return {"student_id": None}
+#start with uvicorn main:app --reload
