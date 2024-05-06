@@ -1,6 +1,8 @@
 package com.backend.FaceRecognition.services.mail;
 
 import com.backend.FaceRecognition.entities.ApplicationUser;
+import com.backend.FaceRecognition.entities.ResetPasswordToken;
+import com.backend.FaceRecognition.repository.ResetPasswordTokenSaltRepository;
 import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.utils.Response;
@@ -11,6 +13,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Optional;
 @Slf4j
@@ -19,13 +22,15 @@ public class MailService {
     private final ApplicationUserService applicationUserService;
     private final JavaMailSender javaMailSender;
     private final JwtService jwtService;
+    private final ResetPasswordTokenSaltRepository resetPasswordTokenSaltRepository ;
     @Value("${spring.mail.username}")
     private String myEmail;
 
-    public MailService(ApplicationUserService applicationUserService, JavaMailSender javaMailSender,JwtService jwtService) {
+    public MailService(ApplicationUserService applicationUserService, JavaMailSender javaMailSender, JwtService jwtService, ResetPasswordTokenSaltRepository resetPasswordTokenSaltRepository) {
         this.applicationUserService = applicationUserService;
         this.javaMailSender = javaMailSender;
         this.jwtService = jwtService;
+        this.resetPasswordTokenSaltRepository = resetPasswordTokenSaltRepository;
     }
     public Response sendForgotPasswordResetLink(String userId) {
         Optional<ApplicationUser> applicationUser = applicationUserService.findUser(userId);
@@ -36,6 +41,12 @@ public class MailService {
         String firstName = applicationUser.get().getFirstname();
         String lastName = applicationUser.get().getLastname();
         String token= jwtService.generateTemporaryToken(new HashMap<>(),userId);
+        ResetPasswordToken resetPasswordToken = ResetPasswordToken.builder()
+                .salt(token)
+                .expiryDateTime(LocalDateTime.now().plusMinutes(10))
+                .userId(userId)
+                .build();
+        resetPasswordTokenSaltRepository.save(resetPasswordToken);
         String passwordResetLink = getResetLink(token);
         String subject = "Password Reset Request";
         String text = "Dear " + firstName + " " + lastName + ",\n\n"

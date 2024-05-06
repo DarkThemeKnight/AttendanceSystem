@@ -9,9 +9,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.*;
 
 @Component
 @Slf4j
@@ -30,8 +29,12 @@ public class InitializeBeans {
             ApplicationUser user = new ApplicationUser("0001", "Omotola",
                     "David",
                     "Ayanfeoluwa",
-                    "ayanfeoluwadafidi@outlook.com",passwordEncoder.encode("141066"),
-                    Collections.singleton(Role.ROLE_SUPER_ADMIN),
+                    "ayanfeoluwadafidi@outlook.com",
+                    passwordEncoder.encode("141066"),
+                    LocalDate.of(2008,3,12),
+                    "Demo Address",
+                    "08055132800",
+                    Set.of(Role.ROLE_SUPER_ADMIN),
                     true,
                     true,
                     true,

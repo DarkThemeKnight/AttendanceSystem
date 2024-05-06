@@ -76,7 +76,7 @@ public class SuperUserService {
                 .build();
     }
 
-    public ResponseEntity<String> getAllStudents() {
+    public ResponseEntity<GetListOfUsers> getAllStudents() {
         List<ApplicationUser> users = applicationUserService.findAllUsers();
         users = users.stream().filter(user -> user.hasRole(Role.ROLE_STUDENT)).toList();
         List<ApplicationUserRequest> userx = users.stream().map(v -> ApplicationUserRequest.builder()
@@ -86,12 +86,11 @@ public class SuperUserService {
                 .middleName(v.getMiddleName())
                 .schoolEmail(v.getSchoolEmail())
                 .build()).toList();
-        Gson gson = new Gson();
-        String json = gson.toJson(new GetListOfUsers(userx));
-        return ResponseEntity.ok(json);
+
+        return ResponseEntity.ok(new GetListOfUsers(userx));
     }
 
-    public ResponseEntity<String> getAll(String lowerCase) {
+    public ResponseEntity<GetListOfUsers> getAll(String lowerCase) {
         return switch (lowerCase) {
             case "student" -> getAllStudents();
             case "instructor" -> {
@@ -104,9 +103,7 @@ public class SuperUserService {
                         .middleName(v.getMiddleName())
                         .schoolEmail(v.getSchoolEmail())
                         .build()).toList();
-                Gson gson = new Gson();
-                String json = gson.toJson(new GetListOfUsers(userx));
-                yield ResponseEntity.ok(json);
+                yield ResponseEntity.ok(new GetListOfUsers(userx));
             }
             case "admin" -> {
                 List<ApplicationUser> users = applicationUserService.findAllUsers();
@@ -118,11 +115,11 @@ public class SuperUserService {
                         .middleName(v.getMiddleName())
                         .schoolEmail(v.getSchoolEmail())
                         .build()).toList();
-                Gson gson = new Gson();
-                String json = gson.toJson(new GetListOfUsers(userx));
-                yield ResponseEntity.ok(json);
+                yield ResponseEntity.ok(new GetListOfUsers(userx));
             }
-            default -> ResponseEntity.badRequest().body("invalid type");
+            default -> ResponseEntity.badRequest().build();
         };
     }
+
+
 }

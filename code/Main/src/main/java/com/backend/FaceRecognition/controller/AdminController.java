@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
 @RestController
+@CrossOrigin("*")
 @RequestMapping("api/v1/admin")
 public class AdminController {
     private final AdminService adminService;
@@ -79,7 +80,7 @@ public class AdminController {
     }
     
     @GetMapping("/subject")
-    public ResponseEntity<Object> getSubjects(@RequestParam("student") String student){
+    public ResponseEntity<AllSubjects> getSubjects(@RequestParam("student") String student){
         return adminService.getAllSubject(Boolean.parseBoolean(student));
     }
 

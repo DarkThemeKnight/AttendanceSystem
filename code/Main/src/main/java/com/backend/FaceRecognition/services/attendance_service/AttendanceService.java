@@ -103,31 +103,18 @@ public class AttendanceService {
         attendanceRepository.saveAll(studentAttendance);
         return new ResponseEntity<>("code="+setup.getCode(), HttpStatus.OK);
     }
-
-    /**
-     * Updates the attendance status for a student in a specific subject based on
-     * used
-     * face recognition Algorithm.
-     *
-     * @param subjectCode   The code of the subject for which attendance is being
-     *                      updated.
-     * @param multipartFile The image file used for face recognition.
-     * @param bearer        The authentication token used for authorization.
-     * @return A ResponseEntity indicating the result of the attendance update
-     *         operation.
-     */
-    public ResponseEntity<String> updateAttendanceStatus(String subjectCode, MultipartFile multipartFile,
+    public ResponseEntity<String> updateAttendanceStatus(String attendanceCode, MultipartFile multipartFile,
             String bearer) {
-        Optional<AttendanceSetupPolicy> attendanceSetup = attendanceSetupRepository
-                .findBySubjectIdAndAttendanceDate(subjectCode, LocalDate.now());
+        Optional<AttendanceSetupPolicy> attendanceSetup = attendanceSetupRepository.findById(attendanceCode);
         if (attendanceSetup.isEmpty()) {
             return ResponseEntity.badRequest().body("Attendance is not initialized yet");
         }
-        if (LocalDateTime.now().isAfter(attendanceSetup.get()
-                .getAttendanceDateTime().plusMinutes(attendanceSetup.get()
-                        .getDuration()))) {
+        AttendanceSetupPolicy policy = attendanceSetup.get();
+        if (LocalDateTime.now().isAfter(policy.getAttendanceDateTime()
+                .plusMinutes(policy.getDuration()))) {
             return ResponseEntity.badRequest().body("Time Expired");
         }
+        String subjectCode = policy.getSubjectId();
         Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
         String jwtToken = jwtService.extractTokenFromHeader(bearer);
         String id = jwtService.getId(jwtToken);

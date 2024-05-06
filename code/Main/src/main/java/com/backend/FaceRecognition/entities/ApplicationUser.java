@@ -7,6 +7,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -26,6 +27,9 @@ public class ApplicationUser implements UserDetails {
     private String middleName;
     private String schoolEmail;
     private String password;
+    private LocalDate dateOfBirth;
+    private String address;
+    private String phoneNumber;
     @Enumerated(EnumType.STRING)
     @ElementCollection(targetClass = Role.class, fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles",joinColumns = @JoinColumn(name = "id"))

@@ -12,16 +12,4 @@ import java.util.List;
 @Data
 public class AllSubjectsNoStudentData {
     List<SubjectResponse> data;
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class SubjectResponse {
-        @JsonProperty("subject_code")
-        private String subjectCode;
-        @JsonProperty("subject_title")
-        private String subjectTitle;
-        @JsonProperty("id_lecturer_in_charge")
-        private String idLecturerInCharge;
-    }
 }

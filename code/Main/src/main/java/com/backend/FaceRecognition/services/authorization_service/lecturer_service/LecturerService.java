@@ -11,6 +11,7 @@ import com.backend.FaceRecognition.utils.Response;
 import com.backend.FaceRecognition.utils.StudentAttendanceRecordResponse;
 import com.backend.FaceRecognition.utils.student.StudentRequest;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -20,21 +21,20 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class LecturerService {
     private final AttendanceService attendanceService;
     private final StudentService studentService;
     private final SubjectService subjectService;
     private final SuspensionRepository suspensionRepository;
     private final JwtService jwtService;
-    private final ApplicationUserService applicationUserService;
 
-    public LecturerService(AttendanceService attendanceService, StudentService studentService, SubjectService subjectService, SuspensionRepository suspensionRepository, JwtService jwtService, ApplicationUserService applicationUserService) {
+    public LecturerService(AttendanceService attendanceService, StudentService studentService, SubjectService subjectService, SuspensionRepository suspensionRepository, JwtService jwtService) {
         this.attendanceService = attendanceService;
         this.studentService = studentService;
         this.subjectService = subjectService;
         this.suspensionRepository = suspensionRepository;
         this.jwtService = jwtService;
-        this.applicationUserService = applicationUserService;
     }
 
     private boolean cantPerformOperation(String authorizationHeader, Subject subject){
@@ -55,7 +55,7 @@ public class LecturerService {
         subjectService.save(subject);
         return new ResponseEntity<>("Cleared", HttpStatus.OK);
     }
-    public ResponseEntity<Response> suspendStudentFromMarkingAttendance(String auth,String subjectCode, String studentId){
+    public ResponseEntity<Response> suspendStudentFromMarkingAttendance(String auth,String subjectCode, String studentId,boolean suspend){
         Optional<Subject> optionalSubject = subjectService.findSubjectByCode(subjectCode);
         if (optionalSubject.isEmpty()) {
             return new ResponseEntity<>(new Response("subject Not found"), HttpStatus.NOT_FOUND);
@@ -63,12 +63,24 @@ public class LecturerService {
         if (cantPerformOperation(auth, optionalSubject.get())){
             return new ResponseEntity<>(new Response("Unauthorized"),HttpStatus.UNAUTHORIZED);
         }
-        if (suspensionRepository.findByStudentIdAndSubjectId(studentId,subjectCode).isPresent()){
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(new Response("Already suspended"));
+        if (suspend) {
+            if (suspensionRepository.findByStudentIdAndSubjectId(studentId, subjectCode).isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(new Response("Already suspended"));
+            }
+            Suspension suspension = new Suspension(null, studentId, subjectCode);
+            suspensionRepository.save(suspension);
+            return ResponseEntity.ok(new Response("Suspended successfully"));
         }
-        Suspension suspension = new Suspension(null,studentId,subjectCode);
-        suspensionRepository.save(suspension);
-        return ResponseEntity.ok(new Response("Suspended successfully"));
+        else {
+            var optional = suspensionRepository.findByStudentIdAndSubjectId(studentId, subjectCode);
+            if (optional.isPresent()) {
+                suspensionRepository.delete(optional.get());
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(new Response("Restored"));
+            }
+            else {
+                return ResponseEntity.ok(new Response("Is not a Suspended Student"));
+            }
+        }
     }
     public  ResponseEntity<StudentAttendanceRecordResponse>
     viewAttendanceRecord(String auth, String studentId, String subjectCode){

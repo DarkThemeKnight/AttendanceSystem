@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -16,8 +17,10 @@ import java.util.Optional;
 @Slf4j
 public class ApplicationUserService {
     private final ApplicationUserRepository applicationUserRepository;
-    public ApplicationUserService(ApplicationUserRepository applicationUserRepository) {
+    private final PasswordEncoder encoder;
+    public ApplicationUserService(ApplicationUserRepository applicationUserRepository, PasswordEncoder encoder) {
         this.applicationUserRepository = applicationUserRepository;
+        this.encoder = encoder;
     }
     public Optional<ApplicationUser> findUser(String userId){
         return applicationUserRepository.findById(userId);
@@ -80,7 +83,7 @@ public class ApplicationUserService {
         if (applicationUser == null){
             return ResponseEntity.notFound().build();
         }
-        applicationUser.setPassword(resetPassword.getNewPassword());
+        applicationUser.setPassword(encoder.encode(resetPassword.getNewPassword()));
         applicationUserRepository.save(applicationUser);
         return ResponseEntity.ok(new Response("Password changed successfully"));
     }

@@ -1,10 +1,7 @@
 package com.backend.FaceRecognition.entities;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.DayOfWeek;
 
@@ -13,6 +10,7 @@ import java.time.DayOfWeek;
 @AllArgsConstructor
 @Builder
 @Data
+@ToString
 public class Schedule {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -107,7 +108,6 @@ public class AdminService {
             }
         }
     }
-
     public ResponseEntity<String> deleteSubject(String request) {
         Optional<Subject> subject1 = subjectService.findSubjectByCode(request);
         if (subject1.isEmpty()) {
@@ -116,41 +116,31 @@ public class AdminService {
         Set<Student> students = studentService.getAllStudentsOfferingCourse(request);
         students.forEach(student -> {
             Set<Subject> subjects = student.getSubjects();
-            java.util.Iterator<Subject> iterator = subjects.iterator();
-            while (iterator.hasNext()) {
-                Subject subject = iterator.next();
-                if (subject.getSubjectCode().equals(request)) {
-                    iterator.remove(); // Remove the subject from the set
-                }
-            }
+            // Remove the subject from the set
+            subjects.removeIf(subject -> subject.getSubjectCode().equals(request));
         });
         studentService.saveAll(students);
         subjectService.deleteSubjectByCode(request);
         return new ResponseEntity<>("Deleted successfully", HttpStatus.OK);
     }
 
-    public ResponseEntity<Object> getAllSubject(boolean no_student) {
+    public ResponseEntity<AllSubjects> getAllSubject(boolean student) {
         List<Subject> subjects = subjectService.findAll();
-        if (!no_student) {
-            return ResponseEntity.ok(new AllSubjects(subjects.stream().map(this::parse).collect(Collectors.toList())));
+        if (student) {
+            return ResponseEntity.ok(new
+                    AllSubjects(subjects.stream().map(this::parse).collect(Collectors.toList())));
         }
-        List<AllSubjectsNoStudentData.SubjectResponse> myList = subjects.stream()
-                .filter(v -> v != null)
-                .map(s -> AllSubjectsNoStudentData.SubjectResponse
+        List<SubjectResponse> myList = subjects.stream()
+                .filter(Objects::nonNull)
+                .map(s -> SubjectResponse
                         .builder()
                         .subjectTitle(s.getSubjectTitle())
                         .idLecturerInCharge(s.getLecturerInCharge() == null ? "" : s.getLecturerInCharge().getId())
                         .subjectCode(s.getSubjectCode())
                         .build())
                 .toList();
-        AllSubjectsNoStudentData allSubjectsNoStudentData = new AllSubjectsNoStudentData(myList);
-        try {
-            String data = new ObjectMapper().writeValueAsString(allSubjectsNoStudentData);
-            return ResponseEntity.ok(data);
-        } catch (JsonProcessingException e) {
-            log.error("Exception occurred", e);
-            return ResponseEntity.internalServerError().build();
-        }
+        AllSubjects allSubjectsNoStudentData = new AllSubjects(myList);
+        return ResponseEntity.ok(allSubjectsNoStudentData);
     }
 
     public ResponseEntity<SubjectResponse> getSubject(String subjectCode) {
@@ -172,7 +162,6 @@ public class AdminService {
                 subject.getLecturerInCharge() == null ? "" : subject.getLecturerInCharge().getId());
         Set<Student> students = studentService
                 .getAllStudentsOfferingCourse(subject.getSubjectCode());
-        // log.info("size {}",students.size());
         Set<String> matriculationNum = students.stream()
                 .map(Student::getMatriculationNumber).collect(Collectors.toSet());
         response.setStudents(matriculationNum);
@@ -241,5 +230,8 @@ public class AdminService {
         subjectService.save(subject);
         return new ResponseEntity<>("Saved successfully", HttpStatus.OK);
     }
+
+
+
 
 }

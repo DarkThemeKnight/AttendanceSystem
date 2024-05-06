@@ -14,10 +14,10 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/students")
+@CrossOrigin("*")
 public class StudentController {
     private final StudentService studentService;
     private final AttendanceService attendanceService;
-
     public StudentController(StudentService studentService, AttendanceService attendanceService) {
         this.studentService = studentService;
         this.attendanceService = attendanceService;

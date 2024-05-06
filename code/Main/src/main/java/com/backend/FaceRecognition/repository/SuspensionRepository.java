@@ -10,5 +10,4 @@ import java.util.Optional;
 public interface SuspensionRepository extends JpaRepository<Suspension, Integer> {
 
     Optional<Suspension> findByStudentIdAndSubjectId(String studentId, String subjectId);
-
 }

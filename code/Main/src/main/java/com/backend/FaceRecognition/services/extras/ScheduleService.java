@@ -7,6 +7,7 @@ import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
 import com.backend.FaceRecognition.utils.ScheduleSetupRequest;
 import com.backend.FaceRecognition.utils.ScheduleSetupResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Service
+@Slf4j
 public class ScheduleService {
     private final ScheduleRepository scheduleRepository;
     private final JwtService jwtService;
@@ -63,28 +65,31 @@ public class ScheduleService {
                 List<ScheduleSetupRequest.CustomRequest> data =requests.getData();
                 List<Schedule> mySchedule = scheduleRepository.findAllByUserId(id);
                 List<ScheduleSetupResponse.CustomRequest> responseData=new ArrayList<>();
-                int i = 0;
-                for (Schedule ss:mySchedule){
-                    if (ss.getId().equals(data.get(i).getId())){
-                        ScheduleSetupRequest.CustomRequest customRequest = data.get(i);
-                        i++;
-                        Subject subject = subjectService.findSubjectByCode(customRequest.getCourseCode().toUpperCase()).orElse(null);
-                        if (subject == null){
-                            continue;
-                        }
-                        Schedule schedule =parse(customRequest,id,subject.getSubjectTitle());
-                        schedule = scheduleRepository.save(schedule);
-                        ScheduleSetupResponse.CustomRequest response = parse(schedule);                        responseData.add(response);
+                    int i = 0;
+                    for (Schedule ss:mySchedule){
+                        if (ss.getId().equals(data.get(i).getId())){
+                            ScheduleSetupRequest.CustomRequest customRequest = data.get(i);
+                            i++;
+                            Subject subject = subjectService.findSubjectByCode(customRequest.getCourseCode().toUpperCase()).orElse(null);
+                            if (subject == null){
+                                continue;
+                            }
+                            Schedule schedule =parse(customRequest,id,subject.getSubjectTitle());
+                            schedule = scheduleRepository.save(schedule);
+                            ScheduleSetupResponse.CustomRequest response = parse(schedule);                        responseData.add(response);
                     }
                 }
                 yield ResponseEntity.ok(new ScheduleSetupResponse("Updated Successfully",responseData));
             }
             case "ADD"-> {
                 List<ScheduleSetupRequest.CustomRequest> customRequests = requests.getData();
+                log.info("Adding schedule");
+                log.info("{}",customRequests);
                 List<Schedule> mySchedule = customRequests.stream().map(
                         customRequest -> {
                             Subject subject = subjectService.findSubjectByCode(customRequest.getCourseCode().toUpperCase()).orElse(null);
                             if (subject == null){
+                                log.info("could not retrieve subject => {}",customRequest.getCourseCode().toUpperCase());
                                 return null;
                             }
                             return Schedule.builder()
@@ -97,8 +102,8 @@ public class ScheduleService {
                                     .build();
                         }
                 ).filter(Objects::nonNull).toList();
-                List<ScheduleSetupResponse.CustomRequest> response = scheduleRepository.saveAll(mySchedule)
-                        .stream().map(schedule -> ScheduleSetupResponse.CustomRequest.builder()
+                List<Schedule> saved = scheduleRepository.saveAll(mySchedule);
+                List<ScheduleSetupResponse.CustomRequest> response = saved.stream().map(schedule -> ScheduleSetupResponse.CustomRequest.builder()
                                 .id(schedule.getId())
                                 .duration(schedule.getDuration())
                                 .time(schedule.getTime())
@@ -107,6 +112,7 @@ public class ScheduleService {
                                 .dayOfWeek(schedule.getDayOfWeek())
                                 .build()
                         ).toList();
+                log.info("Success");
                 yield ResponseEntity.ok(new ScheduleSetupResponse("Success",response));
             }
             default -> ResponseEntity.badRequest().body(new ScheduleSetupResponse("Bad type",null));

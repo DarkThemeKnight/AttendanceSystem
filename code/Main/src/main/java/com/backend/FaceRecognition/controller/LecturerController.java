@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
 @RestController
+@CrossOrigin("*")
 @RequestMapping("api/v1/attendance")
 public class LecturerController {
     private final AttendanceService attendanceService;
@@ -38,15 +39,7 @@ public class LecturerController {
                 request.getHeader("Authorization"), duration);
         return new ResponseEntity<>(new Response(r.getBody()), r.getStatusCode());
     }
-    @PostMapping("/update/{subject_code}")
-    public ResponseEntity<Response> updateAttendanceStatus(@PathVariable("subject_code") String subjectCode,
-            @RequestParam MultipartFile file,
-            HttpServletRequest request) {
-        // Delegate the attendance status update process to the AttendanceService
-        ResponseEntity<String> response = attendanceService.updateAttendanceStatus(subjectCode, file,
-                request.getHeader("Authorization"));
-        return new ResponseEntity<>(new Response(response.getBody()), response.getStatusCode());
-    }
+
     @GetMapping("/record")
     public ResponseEntity<AttendanceRecordResponse> getRecord(@RequestParam String subjectCode,
             @RequestParam String date,
@@ -86,8 +79,8 @@ public class LecturerController {
     public ResponseEntity<Response> suspendStudentFromMarkingAttendance(
             @RequestParam String subjectCode,
             @RequestParam String studentId,
-            @RequestHeader("Authorization") String bearer) {
-        return lecturerService.suspendStudentFromMarkingAttendance(bearer, subjectCode, studentId);
+            @RequestHeader("Authorization") String bearer,@RequestParam boolean suspend) {
+        return lecturerService.suspendStudentFromMarkingAttendance(bearer, subjectCode, studentId,suspend);
     }
     @GetMapping("/student-record")
     private ResponseEntity<StudentAttendanceRecordResponse> viewAttendanceRecord(

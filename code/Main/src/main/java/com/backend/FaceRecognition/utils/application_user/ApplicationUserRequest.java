@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,4 +17,10 @@ public class ApplicationUserRequest {
     private String lastname;
     private String middleName;
     private String schoolEmail;
+    private LocalDate dateOfBirth;
+    private String address;
+    private String phoneNumber;
+    private String faculty;
+    private String department;
+    private String specialAccommodations;
 }

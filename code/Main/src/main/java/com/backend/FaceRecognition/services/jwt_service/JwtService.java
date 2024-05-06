@@ -1,4 +1,5 @@
 package com.backend.FaceRecognition.services.jwt_service;
+
 import com.backend.FaceRecognition.entities.ApplicationUser;
 import com.backend.FaceRecognition.entities.ResetPasswordToken;
 import com.backend.FaceRecognition.repository.ResetPasswordTokenSaltRepository;
@@ -11,8 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+
 import java.security.Key;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -37,28 +40,39 @@ public class JwtService {
                 throw new IllegalArgumentException("Invalid JWT token in Authorization header");
             }
         }
-        public String getId(String jwtToken) {
+    public String getId(String jwtToken) {
             return extractClaim(jwtToken, Claims::getSubject);
         }
-        private <T> T extractClaim(String tokenSecretKey, Function<Claims,T> fn) {
-            final Claims claims = extractAllClaims(tokenSecretKey);
-            return fn.apply(claims);
+    private <T> T extractClaim(String tokenSecretKey, Function<Claims,T> fn) {
+        final Claims claims = extractAllClaims(tokenSecretKey);
+        return fn.apply(claims);
+    }
+    public boolean isValidToken(String token, UserDetails applicationUser) {
+        final String username = getId(token);
+        return username.equals(applicationUser.getUsername()) && !isExpired(token);
+    }
+    public String generate(Map<String,Object> map, ApplicationUser user, Date expiry){
+        Date date = new Date(System.currentTimeMillis());
+        return Jwts.builder()
+                .setClaims(map)
+                .setSubject(user.getUsername())
+                .setIssuedAt(date)
+                .setExpiration(expiry) //6 hrs
+                .signWith(getSecretKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+    public static Date getDate(int value, char unit) {
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        switch (unit){
+            case 'H'-> currentDateTime = currentDateTime.plusHours(value);
+            case 'M'-> currentDateTime = currentDateTime.plusMinutes(value);
+            case 'S'-> currentDateTime = currentDateTime.plusSeconds(value);
+            case 'D'-> currentDateTime = currentDateTime.plusDays(value);
+            case 'Y'-> currentDateTime = currentDateTime.plusYears(value);
+            default -> throw new IllegalArgumentException("Invalid parameters");
         }
-
-        public boolean isValidToken(String token, UserDetails applicationUser) {
-            final String username = getId(token);
-            return username.equals(applicationUser.getUsername()) && !isExpired(token);
-        }
-        public String generate(Map<String,Object> map, ApplicationUser user){
-            Date date = new Date(System.currentTimeMillis());
-            return Jwts.builder()
-                    .setClaims(map)
-                    .setSubject(user.getUsername())
-                    .setIssuedAt(date)
-                    .setExpiration(new Date(date.getTime()+(1000*60*60*6))) //6 hrs
-                    .signWith(getSecretKey(), SignatureAlgorithm.HS256)
-                    .compact();
-        }
+        return Date.from(currentDateTime.atZone(ZoneId.systemDefault()).toInstant());
+    }
         public String generateTemporaryToken(Map<String,Object> map, String userId)
         {
         String salt = UUID.randomUUID().toString();

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Service
 public class ProfilePictureService {
@@ -30,27 +31,41 @@ public class ProfilePictureService {
         return file != null && file.getSize() <= maxFileSizeKB * 1024L;
     }
     public ResponseEntity<Response> uploadProfilePicture(String bearer, MultipartFile file){
-        if (isValidProfilePicture(file)) {
+        try {
+            if (!isValidProfilePicture(file)) {
+                return ResponseEntity.badRequest().body(new Response("Image is not valid. Please upload a valid image file."));
+            }
             String id = service.getId(service.extractTokenFromHeader(bearer));
-            ApplicationUser user = applicationUserService.findUser(id).get();
+            Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
+            if (userOptional.isEmpty()) {
+                return ResponseEntity.notFound().build(); // User not found
+            }
+            ApplicationUser user = userOptional.get();
             ProfilePicture profilePicture = new ProfilePicture();
             profilePicture.setUser(user);
-            try {
-                profilePicture.setImageData(file.getBytes());
-                profilePicture = profilePictureRepository.save(profilePicture);
-                user.setProfilePictureId(String.valueOf(profilePicture.getId()));
-            } catch (IOException e) {
-                return ResponseEntity.badRequest().body(new Response("Bad Image"));
-            }
+            Optional<ProfilePicture> pictureOptional = profilePictureRepository.findByUser_Id(id);
+            pictureOptional.ifPresent(profilePictureRepository::delete);
+            profilePicture.setImageData(file.getBytes());
+            profilePicture = profilePictureRepository.save(profilePicture);
+            user.setProfilePictureId(String.valueOf(profilePicture.getId()));
+            applicationUserService.update(user);
+
+            return ResponseEntity.ok().body(new Response("Profile picture uploaded successfully."));
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().body(new Response("Failed to upload profile picture. Please try again later."));
         }
-        return ResponseEntity.badRequest().body(new Response("Image too Large at most 100KB"));
     }
+
     public ResponseEntity<byte[]> getProfilePicture(String bearer){
         String id = service.getId(service.extractTokenFromHeader(bearer));
         ProfilePicture pp = profilePictureRepository.findByUser_Id(id).orElse(null);
         return pp!=null?ResponseEntity.ok(pp.getImageData()):ResponseEntity.notFound().build();
     }
 
+    public ResponseEntity<byte[]> getProfilePictureWithId(String id){
+        ProfilePicture pp = profilePictureRepository.findByUser_Id(id).orElse(null);
+        return pp!=null?ResponseEntity.ok(pp.getImageData()):ResponseEntity.notFound().build();
+    }
 
 
 }

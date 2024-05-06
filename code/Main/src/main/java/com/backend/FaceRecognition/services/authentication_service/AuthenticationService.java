@@ -45,10 +45,18 @@ public class AuthenticationService {
         this.mailService = mailService;
         this.resetPasswordTokenSaltRepository = resetPasswordTokenSaltRepository;
     }
-
     public ResponseEntity<Response> register(ApplicationUserRequest applicationUser, String type) {
         ApplicationUser user = buildUser(applicationUser);
         return switch (type) {
+            case "hardware"->{
+                user.setUserRole(Set.of(Role.HARDWARE));
+                ResponseEntity<Void> response = applicationUserService.create(user);
+                if (response.getStatusCode() == HttpStatus.CONFLICT) {
+                    yield new ResponseEntity<>(new Response("User already Exists"), HttpStatus.CONFLICT);
+                }
+                jwtService.generate(new HashMap<>(),user,JwtService.getDate(20,'Y'));
+                yield new ResponseEntity<>(new Response("ID="), HttpStatus.OK);
+            }
             case "instructor" -> {
                 user.setUserRole(Set.of(Role.ROLE_LECTURER));
                 ResponseEntity<Void> response = applicationUserService.create(user);
@@ -63,28 +71,28 @@ public class AuthenticationService {
                 if (response.getStatusCode() == HttpStatus.CONFLICT) {
                     yield new ResponseEntity<>(new Response("User already Exists"), HttpStatus.CONFLICT);
                 }
-                Student student = buildStudent(user);
+                Student student = buildStudent(applicationUser);
                 studentService.saveStudent(student);
                 yield ResponseEntity.ok(new Response("Student Added Successfully"));
             }
             default -> ResponseEntity.badRequest().body(new Response("Bad Type"));
         };
     }
-
     private String defaultPassword(String lastname) {
         return passwordEncoder.encode(lastname.toUpperCase());
     }
-
-    public Student buildStudent(ApplicationUser request) {
+    public Student buildStudent(ApplicationUserRequest request) {
         Student student = new Student();
         student.setFirstname(request.getFirstname());
         student.setLastname(request.getLastname());
         student.setMatriculationNumber(request.getId());
         student.setMiddleName(request.getMiddleName());
         student.setSchoolEmail(request.getSchoolEmail());
+        student.setDepartment(request.getDepartment());
+        student.setFaculty(request.getFaculty());
+
         return student;
     }
-
     private ApplicationUser buildUser(ApplicationUserRequest applicationUser) {
         return ApplicationUser.builder()
                 .id(applicationUser.getId())
@@ -93,13 +101,15 @@ public class AuthenticationService {
                 .middleName(applicationUser.getMiddleName())
                 .password(defaultPassword(applicationUser.getLastname()))
                 .schoolEmail(applicationUser.getSchoolEmail())
+                .dateOfBirth(applicationUser.getDateOfBirth())
+                .address(applicationUser.getAddress())
+                .phoneNumber(applicationUser.getPhoneNumber())
                 .isAccountNonLocked(true)
                 .isCredentialsNonExpired(true)
                 .isAccountNonExpired(true)
                 .isEnabled(true)
                 .build();
     }
-
     /**
      * Authenticates a user based on the provided credentials.
      * This method attempts to authenticate a user using the provided credentials.
@@ -108,7 +118,7 @@ public class AuthenticationService {
      * If the user is found, it checks if the account is enabled. If the account is
      * enabled
      * and the provided password matches the user's password, it updates the user's
-     * credentials
+     * credential
      * expiration status, generates a JWT token for the user, and returns a success
      * response with
      * the generated token. If the account is locked or the provided password is
@@ -142,7 +152,7 @@ public class AuthenticationService {
             if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 user.setCredentialsNonExpired(true);
                 applicationUserService.update(user);
-                String token = jwtService.generate(new HashMap<>(), user);
+                String token = jwtService.generate(new HashMap<>(), user,JwtService.getDate(6,'H'));
                 log.info(("Successful login {}"), request.getId());
                 return new ResponseEntity<>(new AuthenticationResponse("Login successfully", token, user.getUserRole()),
                         HttpStatus.OK);
@@ -151,7 +161,6 @@ public class AuthenticationService {
         return new ResponseEntity<>(new AuthenticationResponse("Invalid Username or Password", null, new HashSet<>()),
                 HttpStatus.NOT_FOUND);
     }
-
     /**
      * Logs out a user based on the provided JWT token.
      * This method logs out a user based on the provided JWT token.
@@ -200,6 +209,7 @@ public class AuthenticationService {
         if (LocalDateTime.now().isAfter(val.getExpiryDateTime())){
             return  ResponseEntity.badRequest().body(new Response("Link Expired"));
         }
+        resetPasswordTokenSaltRepository.delete(val);
         return applicationUserService.resetPassword(val.getUserId(),resetPassword);
     }
 

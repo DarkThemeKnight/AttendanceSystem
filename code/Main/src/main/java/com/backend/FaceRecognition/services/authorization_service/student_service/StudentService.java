@@ -1,12 +1,20 @@
 package com.backend.FaceRecognition.services.authorization_service.student_service;
+import com.backend.FaceRecognition.constants.AttendanceStatus;
+import com.backend.FaceRecognition.entities.ApplicationUser;
+import com.backend.FaceRecognition.entities.Attendance;
 import com.backend.FaceRecognition.entities.EncodedImages;
 import com.backend.FaceRecognition.entities.Student;
+import com.backend.FaceRecognition.repository.AttendanceRepository;
 import com.backend.FaceRecognition.repository.EncodedImagesRepository;
 import com.backend.FaceRecognition.repository.StudentRepository;
+import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
+import com.backend.FaceRecognition.services.extras.ProfilePictureService;
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.utils.EncodedImage;
 import com.backend.FaceRecognition.utils.FaceRecognitionEndpoints;
+import com.backend.FaceRecognition.utils.StudentProfile;
 import jakarta.transaction.Transactional;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -18,6 +26,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+
 @Service
 public class StudentService {
     private final EncodedImagesRepository encodedImagesRepository;
@@ -25,12 +35,18 @@ public class StudentService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final FaceRecognitionEndpoints faceRecognitionEndpoints;
     private final JwtService jwtService;
+    private final ApplicationUserService applicationUserService;
+    private final AttendanceRepository attendanceRepository;
+    private final ProfilePictureService profilePictureService;
 
-    public StudentService(EncodedImagesRepository encodedImagesRepository, StudentRepository studentRepository, FaceRecognitionEndpoints faceRecognitionEndpoints,  JwtService jwtService) {
+    public StudentService(EncodedImagesRepository encodedImagesRepository, StudentRepository studentRepository, FaceRecognitionEndpoints faceRecognitionEndpoints, JwtService jwtService, @Lazy ApplicationUserService applicationUserService, AttendanceRepository attendanceRepository, ProfilePictureService profilePictureService) {
         this.encodedImagesRepository = encodedImagesRepository;
         this.studentRepository = studentRepository;
         this.faceRecognitionEndpoints = faceRecognitionEndpoints;
         this.jwtService = jwtService;
+        this.applicationUserService = applicationUserService;
+        this.attendanceRepository = attendanceRepository;
+        this.profilePictureService = profilePictureService;
     }
 
     public List<Student> getAllStudents() {
@@ -88,4 +104,54 @@ public class StudentService {
     public Set<Student> getAllStudentsOfferingCourse(String subjectCode) {
         return studentRepository.findAllStudentsBySubjectCode(subjectCode);
     }
+    public ResponseEntity<StudentProfile> getMyProfile(String studentId){
+        ApplicationUser applicationUser = applicationUserService.findUser(studentId).orElse(null);
+        if (applicationUser == null){
+            return new ResponseEntity<>(StudentProfile.builder().message("Student not found").build(),HttpStatus.NOT_FOUND);
+        }
+        Student student = studentRepository.findById(applicationUser.getId()).orElse(null);
+        if (student == null){
+            return new ResponseEntity<>(StudentProfile.builder().message("Student not found").build(),HttpStatus.NOT_FOUND);
+        }
+        StudentProfile.Course[] courses = new StudentProfile.Course[student.getSubjects().size()];
+        AtomicInteger i = new AtomicInteger(0);
+        student.getSubjects().forEach(subject -> courses[i.getAndIncrement()] =
+                new StudentProfile.Course(subject.getSubjectCode(),subject.getSubjectTitle()));
+        List<Attendance> studentAttendance = attendanceRepository.findByStudentId(studentId);
+        i.set(0);
+        studentAttendance.forEach(v-> {
+            if (v.getStatus() == AttendanceStatus.PRESENT){
+                i.incrementAndGet();
+            }
+        });
+        String attendanceScore;
+        try {
+            attendanceScore = (i.get() / (0.0 + studentAttendance.size())) * 100 + " %";
+        }catch (ArithmeticException e){
+            attendanceScore = "Nil";
+         }
+        byte[] imageData = profilePictureService.getProfilePicture(studentId).getBody();
+
+        StudentProfile studentProfile = StudentProfile.builder()
+                .message("Successfully Fetched Student Profile")
+                .data(
+                        StudentProfile.StudentData.builder()
+                                .name(student.getLastname()+" "+student.getFirstname()+" "+student.getMiddleName())
+                                .matriculationNumber(student.getMatriculationNumber())
+                                .email(student.getSchoolEmail())
+                                .profilePicture(imageData)
+                                .phoneNumber(applicationUser.getPhoneNumber())
+                                .address(applicationUser.getAddress())
+                                .dateOfBirth(applicationUser.getDateOfBirth().toString())
+                                .department(student.getDepartment())
+                                .faculty(student.getFaculty())
+                                .attendanceCount(i.get()+"")
+                                .totalPossible(studentAttendance.size()+"")
+                                .attendanceScore(attendanceScore)
+                                .courses(courses)
+                                .build()
+                ).build();
+        return ResponseEntity.ok(studentProfile);
+    }
+
 }
