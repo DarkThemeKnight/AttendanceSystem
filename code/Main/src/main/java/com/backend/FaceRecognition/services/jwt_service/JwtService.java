@@ -55,9 +55,9 @@ public class JwtService {
         Date date = new Date(System.currentTimeMillis());
         return Jwts.builder()
                 .setClaims(map)
-                .setSubject(user.getUsername())
+                .setSubject(user.getId())
                 .setIssuedAt(date)
-                .setExpiration(expiry) //6 hrs
+                .setExpiration(expiry)
                 .signWith(getSecretKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

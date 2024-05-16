@@ -24,7 +24,10 @@ public class HardwareController {
                 file, request.getHeader("Authorization"));
         return new ResponseEntity<>(new Response(response.getBody()), response.getStatusCode());
     }
-
+    @GetMapping("/")
+    public ResponseEntity<Response> ping(){
+  	return ResponseEntity.ok(new Response("Accepted"));
+    }
 
 
 }

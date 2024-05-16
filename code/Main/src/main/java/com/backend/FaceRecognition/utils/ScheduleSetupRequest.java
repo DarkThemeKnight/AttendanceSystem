@@ -15,7 +15,7 @@ public class ScheduleSetupRequest {
     @NoArgsConstructor
     @ToString
     public static class CustomRequest{
-        private Integer id;//required for update
+        private Integer id; //required for update
         private String courseCode;
         private String duration;
         private String time;

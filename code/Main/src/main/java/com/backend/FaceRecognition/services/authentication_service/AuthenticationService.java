@@ -45,17 +45,30 @@ public class AuthenticationService {
         this.mailService = mailService;
         this.resetPasswordTokenSaltRepository = resetPasswordTokenSaltRepository;
     }
-    public ResponseEntity<Response> register(ApplicationUserRequest applicationUser, String type) {
+    public ResponseEntity<Response> register(ApplicationUserRequest applicationUser, String type,String token) {
         ApplicationUser user = buildUser(applicationUser);
         return switch (type) {
-            case "hardware"->{
-                user.setUserRole(Set.of(Role.HARDWARE));
+            case "admin"->{
+                String id = jwtService.getId(jwtService.extractTokenFromHeader(token));
+                ApplicationUser requestUser = applicationUserService.findUser(id).get();
+                if (!requestUser.getUserRole().contains(Role.ROLE_SUPER_ADMIN)){
+                    yield new ResponseEntity<>(new Response(),HttpStatus.UNAUTHORIZED);
+                }
+                user.setUserRole(Set.of(Role.ROLE_ADMIN));
                 ResponseEntity<Void> response = applicationUserService.create(user);
                 if (response.getStatusCode() == HttpStatus.CONFLICT) {
                     yield new ResponseEntity<>(new Response("User already Exists"), HttpStatus.CONFLICT);
                 }
-                jwtService.generate(new HashMap<>(),user,JwtService.getDate(20,'Y'));
-                yield new ResponseEntity<>(new Response("ID="), HttpStatus.OK);
+                yield new ResponseEntity<>(new Response("User Registered Successfully"), HttpStatus.OK);
+            }
+            case "hardware"->{
+                user.setUserRole(Set.of(Role.ROLE_HARDWARE));
+                ResponseEntity<Void> response = applicationUserService.create(user);
+                if (response.getStatusCode() == HttpStatus.CONFLICT) {
+                    yield new ResponseEntity<>(new Response("User already Exists"), HttpStatus.CONFLICT);
+                }
+                String value = jwtService.generate(new HashMap<>(),user,JwtService.getDate(20,'Y'));
+                yield new ResponseEntity<>(new Response("ID="+value), HttpStatus.OK);
             }
             case "instructor" -> {
                 user.setUserRole(Set.of(Role.ROLE_LECTURER));
@@ -79,7 +92,7 @@ public class AuthenticationService {
         };
     }
     private String defaultPassword(String lastname) {
-        return passwordEncoder.encode(lastname.toUpperCase());
+        return lastname != null?passwordEncoder.encode(lastname.toUpperCase()):passwordEncoder.encode("");
     }
     public Student buildStudent(ApplicationUserRequest request) {
         Student student = new Student();

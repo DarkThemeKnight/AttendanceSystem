@@ -11,9 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -29,6 +31,18 @@ public class ScheduleService {
     public ResponseEntity<ScheduleSetupResponse> fetch(String bearer){
         List<Schedule> schedules = scheduleRepository.findAllByUserId(jwtService.getId(jwtService.extractTokenFromHeader(bearer)));
         return ResponseEntity.ok(parse(schedules));
+    }
+    public ResponseEntity<ScheduleSetupResponse> fetch(String bearer, String day){
+       try {
+           List<Schedule> schedules = scheduleRepository.findAllByUserId(jwtService.getId(jwtService.extractTokenFromHeader(bearer)));
+           schedules = schedules.stream().filter(schedule ->
+                           schedule.getDayOfWeek()
+                                   .equals(DayOfWeek.valueOf(day.toUpperCase())))
+                   .toList();
+           return ResponseEntity.ok(parse(schedules));
+       }catch (IllegalArgumentException e){
+           return ResponseEntity.badRequest().body(new ScheduleSetupResponse("Invalid type only MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY and SUNDAY is allowed",null));
+       }
     }
     private ScheduleSetupResponse parse(List<Schedule> schedules) {
         if (schedules.isEmpty()){

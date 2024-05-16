@@ -22,5 +22,4 @@ public class ApplicationUserRequest {
     private String phoneNumber;
     private String faculty;
     private String department;
-    private String specialAccommodations;
 }

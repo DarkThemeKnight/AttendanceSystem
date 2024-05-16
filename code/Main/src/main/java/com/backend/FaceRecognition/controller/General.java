@@ -48,6 +48,10 @@ public class General {
     public ResponseEntity<ScheduleSetupResponse> getMySchedule(@RequestHeader("Authorization") String bearer) {
         return scheduleService.fetch(bearer);
     }
+    @GetMapping("/schedule/{day}")
+    public ResponseEntity<ScheduleSetupResponse> getMySchedule(@RequestHeader("Authorization") String bearer, @PathVariable("day") String day) {
+        return scheduleService.fetch(bearer, day);
+    }
     @PostMapping("/schedule")
     public ResponseEntity<ScheduleSetupResponse> addSchedule(@RequestBody ScheduleSetupRequest scheduleRequest,
             @RequestHeader("Authorization") String auth) {

@@ -48,6 +48,8 @@ public class SecurityFilter {
                                 .authenticated()
                                 .requestMatchers("api/v1/super-admin/**")
                                 .hasRole("SUPER_ADMIN")
+                                .requestMatchers("api/v1/hardware/**")
+                                .hasAuthority("ROLE_HARDWARE")
                                 .requestMatchers("test/**")
                                 .permitAll()
                                 .anyRequest()

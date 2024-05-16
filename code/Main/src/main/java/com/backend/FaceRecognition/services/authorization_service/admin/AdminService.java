@@ -8,12 +8,11 @@ import com.backend.FaceRecognition.services.authorization_service.student_servic
 import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
+import com.backend.FaceRecognition.utils.GetListOfUsers;
+import com.backend.FaceRecognition.utils.application_user.ApplicationUserRequest;
 import com.backend.FaceRecognition.utils.subject.AllSubjects;
-import com.backend.FaceRecognition.utils.subject.AllSubjectsNoStudentData;
 import com.backend.FaceRecognition.utils.subject.SubjectRequest;
 import com.backend.FaceRecognition.utils.subject.SubjectResponse;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -47,6 +46,7 @@ public class AdminService {
         String user_id = jwtService.getId(jwt_token);
         ApplicationUser requestingUser = applicationUserService.findUser(user_id).get();
         Set<Role> roles = requestingUser.getUserRole();
+        log.info("Role => {}",roles);
         Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
         if (!roles.contains(Role.ROLE_SUPER_ADMIN)) {
             if (userOptional.isPresent()) {
@@ -63,7 +63,7 @@ public class AdminService {
         } else {
             if (userOptional.isPresent()) {
                 ApplicationUser user = userOptional.get();
-                if (user.hasRole(Role.ROLE_ADMIN)) {
+                if (user.hasRole(Role.ROLE_SUPER_ADMIN)) {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                             .body("Unauthorized to lock account.");
                 }
@@ -230,8 +230,75 @@ public class AdminService {
         subjectService.save(subject);
         return new ResponseEntity<>("Saved successfully", HttpStatus.OK);
     }
+    public ResponseEntity<ApplicationUser> getUser(String userId,String bearer) {
+        Optional<ApplicationUser> applicationUserOptional = applicationUserService.findUser(userId);
+        String id = jwtService.getId(jwtService.extractTokenFromHeader(bearer));
+        var user = applicationUserService.findUser(id).get();
+        if (applicationUserOptional.get().getUserRole().contains(Role.ROLE_SUPER_ADMIN) && !user.getUserRole().contains(Role.ROLE_SUPER_ADMIN)){
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        return applicationUserOptional.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+    public ResponseEntity<GetListOfUsers> getAllStudents() {
+        List<ApplicationUser> users = applicationUserService.findAllUsers();
+        users = users.stream().filter(user -> user.hasRole(Role.ROLE_STUDENT)).toList();
+        List<ApplicationUserRequest> userx = users.stream().map(v -> ApplicationUserRequest.builder()
+                .id(v.getId())
+                .firstname(v.getFirstname())
+                .lastname(v.getLastname())
+                .middleName(v.getMiddleName())
+                .schoolEmail(v.getSchoolEmail())
+                .build()).toList();
 
-
+        return ResponseEntity.ok(new GetListOfUsers(userx));
+    }
+    public ResponseEntity<GetListOfUsers> getAll(String lowerCase, String bearer) {
+        return switch (lowerCase) {
+            case "student" -> getAllStudents();
+            case "instructor" -> {
+                List<ApplicationUser> users = applicationUserService.findAllUsers();
+                users = users.stream().filter(user -> user.hasRole(Role.ROLE_LECTURER)).toList();
+                List<ApplicationUserRequest> userx = users.stream().map(v -> ApplicationUserRequest.builder()
+                        .id(v.getId())
+                        .firstname(v.getFirstname())
+                        .lastname(v.getLastname())
+                        .middleName(v.getMiddleName())
+                        .schoolEmail(v.getSchoolEmail())
+                        .build()).toList();
+                yield ResponseEntity.ok(new GetListOfUsers(userx));
+            }
+            case "admin" -> {
+                var reqUser= applicationUserService.findUser(jwtService.getId(jwtService.extractTokenFromHeader(bearer))).get();
+                if (!reqUser.getUserRole().contains(Role.ROLE_SUPER_ADMIN)) {
+                    yield new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+                }
+                List<ApplicationUser> users = applicationUserService.findAllUsers();
+                users = users.stream().filter(user -> user.hasRole(Role.ROLE_ADMIN)).toList();
+                List<ApplicationUserRequest> userx = users.stream().map(v -> ApplicationUserRequest.builder()
+                        .id(v.getId())
+                        .firstname(v.getFirstname())
+                        .lastname(v.getLastname())
+                        .middleName(v.getMiddleName())
+                        .schoolEmail(v.getSchoolEmail())
+                        .build()).toList();
+                yield ResponseEntity.ok(new GetListOfUsers(userx));
+            }
+            case "hardware"->{
+                List<ApplicationUser> users = applicationUserService.findAllUsers();
+                users = users.stream().filter(user -> user.hasRole(Role.ROLE_HARDWARE)).toList();
+                List<ApplicationUserRequest> userx = users.stream().map(v -> ApplicationUserRequest.builder()
+                        .id(v.getId())
+                        .firstname(v.getFirstname())
+                        .lastname(v.getLastname())
+                        .middleName(v.getMiddleName())
+                        .schoolEmail(v.getSchoolEmail())
+                        .build()).toList();
+                yield ResponseEntity.ok(new GetListOfUsers(userx));
+            }
+            default -> ResponseEntity.badRequest().build();
+        };
+    }
 
 
 }

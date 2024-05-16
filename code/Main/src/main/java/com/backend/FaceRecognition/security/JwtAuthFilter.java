@@ -38,6 +38,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String token;
         final String userId;
         if (authHeader==null || !authHeader.startsWith("Bearer ")){
+            boolean val = authHeader==null;
+            if (val){
+                log.info("Null Token");
+            }
+            else{
+                log.info("Token does not start with \"Bearer \"");
+            }
             filterChain.doFilter(request,response);
             return;
         }
@@ -47,15 +54,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if(!userId.isEmpty() && SecurityContextHolder.getContext().getAuthentication() == null){
                 ApplicationUser applicationUser = userRepository.findById(userId).orElse(null);
                 if(applicationUser == null){
+                    log.info("User name not found");
                     response.sendError(HttpStatus.UNAUTHORIZED.value(),"Username not found");
                     return;
                 }
-
                 if (!applicationUser.isEnabled()){
+                    log.info("Disabled");
                     response.sendError(HttpStatus.UNAUTHORIZED.value(),"Disabled Account");
                     return;
                 }
                 if (!applicationUser.isCredentialsNonExpired()){
+                    log.info("Expired Credentials");
                     response.sendError(HttpStatus.UNAUTHORIZED.value(),"Expired credentials");
                     return;
                 }
@@ -63,7 +72,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     SecurityContext context = SecurityContextHolder.createEmptyContext();
                     log.info("User Id => {}",applicationUser.getId());
                     log.info("User authorities => {}",applicationUser.getAuthorities());
-
                     UsernamePasswordAuthenticationToken authenticationToken =
                             new UsernamePasswordAuthenticationToken(userRepository, null, applicationUser.getAuthorities());
                     authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -72,8 +80,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
             }
         }catch (MalformedJwtException e){
+            log.info("Malformed Token");
             response.sendError(HttpStatus.BAD_REQUEST.value(),"Malformed Jwt Exception");
         }catch (Exception e){
+            log.info("Error");
             response.sendError(HttpStatus.BAD_REQUEST.value(),"Exception occur "+e.getMessage());
             return;
         }
