@@ -52,6 +52,7 @@ public class JwtService {
         return username.equals(applicationUser.getUsername()) && !isExpired(token);
     }
     public String generate(Map<String,Object> map, ApplicationUser user, Date expiry){
+        log.info("Expiry date {}",expiry);
         Date date = new Date(System.currentTimeMillis());
         return Jwts.builder()
                 .setClaims(map)
@@ -71,6 +72,7 @@ public class JwtService {
             case 'Y'-> currentDateTime = currentDateTime.plusYears(value);
             default -> throw new IllegalArgumentException("Invalid parameters");
         }
+        log.info("Created date => {}",currentDateTime);
         return Date.from(currentDateTime.atZone(ZoneId.systemDefault()).toInstant());
     }
         public String generateTemporaryToken(Map<String,Object> map, String userId)

@@ -26,12 +26,13 @@ public class InitializeBeans {
     public CommandLineRunner setupSuperUser(){
         return args -> {
             log.info("Setting up super user");
+            List<ApplicationUser> users = new ArrayList<>();
             ApplicationUser user = new ApplicationUser("0001", "Omotola",
                     "David",
                     "Ayanfeoluwa",
                     "ayanfeoluwadafidi@outlook.com",
                     passwordEncoder.encode("141066"),
-                    LocalDate.of(2008,3,12),
+//                    LocalDate.of(2008,3,12),
                     "Demo Address",
                     "08055132800",
                     Set.of(Role.ROLE_SUPER_ADMIN),
@@ -40,7 +41,27 @@ public class InitializeBeans {
                     true,
                     true,
                     null);
-            userService.create(user);
+            users.add(user);
+            user = ApplicationUser.builder()
+                    .id("0002")
+                    .address("Demo Address")
+                    .phoneNumber("029203939202")
+                    .userRole(Set.of(Role.ROLE_ADMIN))
+//                    .dateOfBirth(LocalDate.of(2001,01,01))
+                    .firstname("admin1")
+                    .lastname("demoSurname")
+                    .password(passwordEncoder.encode("DEMOSURNAME"))
+                    .isAccountNonExpired(true)
+                    .isEnabled(true)
+                    .isCredentialsNonExpired(true)
+                    .isAccountNonLocked(true)
+                    .build();
+            users.add(user);
+
+
+            for (ApplicationUser userx: users) {
+                userService.create(userx);
+            }
             log.info("Successfully setup application owner");
         };
     }

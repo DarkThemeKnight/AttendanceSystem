@@ -20,11 +20,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -45,8 +43,9 @@ public class AuthenticationService {
         this.mailService = mailService;
         this.resetPasswordTokenSaltRepository = resetPasswordTokenSaltRepository;
     }
-    public ResponseEntity<Response> register(ApplicationUserRequest applicationUser, String type,String token) {
+    public ResponseEntity<Response> register(ApplicationUserRequest applicationUser,String token) {
         ApplicationUser user = buildUser(applicationUser);
+        String type = applicationUser.getRole().toLowerCase();
         return switch (type) {
             case "admin"->{
                 String id = jwtService.getId(jwtService.extractTokenFromHeader(token));
@@ -90,6 +89,7 @@ public class AuthenticationService {
             }
             default -> ResponseEntity.badRequest().body(new Response("Bad Type"));
         };
+
     }
     private String defaultPassword(String lastname) {
         return lastname != null?passwordEncoder.encode(lastname.toUpperCase()):passwordEncoder.encode("");
@@ -101,9 +101,6 @@ public class AuthenticationService {
         student.setMatriculationNumber(request.getId());
         student.setMiddleName(request.getMiddleName());
         student.setSchoolEmail(request.getSchoolEmail());
-        student.setDepartment(request.getDepartment());
-        student.setFaculty(request.getFaculty());
-
         return student;
     }
     private ApplicationUser buildUser(ApplicationUserRequest applicationUser) {
@@ -114,7 +111,6 @@ public class AuthenticationService {
                 .middleName(applicationUser.getMiddleName())
                 .password(defaultPassword(applicationUser.getLastname()))
                 .schoolEmail(applicationUser.getSchoolEmail())
-                .dateOfBirth(applicationUser.getDateOfBirth())
                 .address(applicationUser.getAddress())
                 .phoneNumber(applicationUser.getPhoneNumber())
                 .isAccountNonLocked(true)
@@ -165,9 +161,11 @@ public class AuthenticationService {
             if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 user.setCredentialsNonExpired(true);
                 applicationUserService.update(user);
-                String token = jwtService.generate(new HashMap<>(), user,JwtService.getDate(6,'H'));
+                Date expiry = JwtService.getDate(1,'H');
+                LocalDateTime localDateTime = LocalDateTime.now().plusHours(1);
+                String token = jwtService.generate(new HashMap<>(),user,expiry);
                 log.info(("Successful login {}"), request.getId());
-                return new ResponseEntity<>(new AuthenticationResponse("Login successfully", token, user.getUserRole()),
+                return new ResponseEntity<>(new AuthenticationResponse("Login successfully", token, user.getUserRole(),localDateTime),
                         HttpStatus.OK);
             }
         }

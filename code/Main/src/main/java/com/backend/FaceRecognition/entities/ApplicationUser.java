@@ -1,6 +1,8 @@
 package com.backend.FaceRecognition.entities;
 
 import com.backend.FaceRecognition.constants.Role;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -19,15 +21,18 @@ import java.util.stream.Collectors;
 @Data
 @Entity
 @ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ApplicationUser implements UserDetails {
     @Id
+    @JsonIgnore
     private String id;
     private String firstname;
     private String lastname;
     private String middleName;
+    @Column(unique = true)
     private String schoolEmail;
+    @JsonIgnore
     private String password;
-    private LocalDate dateOfBirth;
     private String address;
     private String phoneNumber;
     @Enumerated(EnumType.STRING)
@@ -41,6 +46,7 @@ public class ApplicationUser implements UserDetails {
     private String profilePictureId;
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return userRole.stream()
                 .map(role -> new SimpleGrantedAuthority(role.name()))

@@ -23,8 +23,6 @@ public class Student {
     private String lastname;
     @Column(name = "middle_name")
     private String middleName;
-    private String faculty;
-    private String department;
     @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(
             name = "student_subject",

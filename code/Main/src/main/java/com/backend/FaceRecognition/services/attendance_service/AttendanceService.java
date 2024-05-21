@@ -103,9 +103,11 @@ public class AttendanceService {
         attendanceRepository.saveAll(studentAttendance);
         return new ResponseEntity<>("code="+setup.getCode(), HttpStatus.OK);
     }
-    public ResponseEntity<String> updateAttendanceStatus(String attendanceCode, MultipartFile multipartFile,
-            String bearer) {
-        Optional<AttendanceSetupPolicy> attendanceSetup = attendanceSetupRepository.findById(attendanceCode);
+    public ResponseEntity<String> updateAttendanceStatus(String attendanceCode,
+                                                         MultipartFile multipartFile,
+                                                            String bearer) {
+        Optional<AttendanceSetupPolicy> attendanceSetup =
+                attendanceSetupRepository.findById(attendanceCode);
         if (attendanceSetup.isEmpty()) {
             return ResponseEntity.badRequest().body("Attendance is not initialized yet");
         }

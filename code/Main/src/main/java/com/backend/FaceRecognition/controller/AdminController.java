@@ -13,6 +13,7 @@ import com.backend.FaceRecognition.utils.application_user.ApplicationUserRequest
 import com.backend.FaceRecognition.utils.subject.AllSubjects;
 import com.backend.FaceRecognition.utils.subject.SubjectRequest;
 import com.backend.FaceRecognition.utils.subject.SubjectResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,7 @@ import java.time.format.DateTimeParseException;
 
 @RestController
 @CrossOrigin("*")
+@Slf4j
 @RequestMapping("api/v1/admin")
 public class AdminController {
     private final AdminService adminService;
@@ -58,10 +60,10 @@ public class AdminController {
     @PostMapping("/register")
     public ResponseEntity<Response> register(
             @RequestHeader("Authorization") String token,
-            @RequestBody ApplicationUserRequest applicationUser,
-            @RequestParam String type
+            @RequestBody ApplicationUserRequest applicationUser
     ) {
-        return authenticationService.register(applicationUser, type.toLowerCase(), token);
+        log.info("Register User {}",applicationUser);
+        return authenticationService.register(applicationUser, token);
     }
     @PostMapping("/set-to-admin")
     @PreAuthorize("hasRole('ROLE_SUPER_ADMIN')")

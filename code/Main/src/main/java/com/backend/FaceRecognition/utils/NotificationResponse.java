@@ -12,7 +12,6 @@ import java.util.List;
 public class NotificationResponse {
     private String message;
     private List<CustomData> data;
-
     @AllArgsConstructor
     @NoArgsConstructor
     @Data

@@ -1,5 +1,8 @@
 package com.backend.FaceRecognition.utils.application_user;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,9 +14,12 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ApplicationUserRequest {
     private String id;
+    @JsonProperty("firstName")
     private String firstname;
+    @JsonProperty("lastName")
     private String lastname;
     private String middleName;
     private String schoolEmail;
@@ -22,4 +28,6 @@ public class ApplicationUserRequest {
     private String phoneNumber;
     private String faculty;
     private String department;
+    @JsonIgnore(value = false)
+    private String role;
 }
