@@ -22,7 +22,9 @@ public class HardwareController {
             HttpServletRequest request) {
         ResponseEntity<String> response = attendanceService.updateAttendanceStatus(attendanceCode,
                 file, request.getHeader("Authorization"));
-        return new ResponseEntity<>(new Response(response.getBody()), response.getStatusCode());
+            return new ResponseEntity<>(new Response(response.getBody()), response.getStatusCode());
+
+
     }
     @GetMapping("/")
     public ResponseEntity<Response> ping(){

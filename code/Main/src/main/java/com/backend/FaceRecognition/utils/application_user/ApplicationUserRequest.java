@@ -16,18 +16,24 @@ import java.time.LocalDate;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ApplicationUserRequest {
+    private String accountStatus;
     private String id;
     @JsonProperty("firstName")
     private String firstname;
     @JsonProperty("lastName")
     private String lastname;
+//    @JsonIgnore
     private String middleName;
     private String schoolEmail;
+  //  @JsonIgnore
     private LocalDate dateOfBirth;
+    //@JsonIgnore
     private String address;
     private String phoneNumber;
+    //@JsonIgnore
     private String faculty;
+    //@JsonIgnore
     private String department;
-    @JsonIgnore(value = false)
+   // @JsonIgnore
     private String role;
 }

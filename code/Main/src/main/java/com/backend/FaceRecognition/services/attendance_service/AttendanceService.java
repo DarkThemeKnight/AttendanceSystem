@@ -20,11 +20,9 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
@@ -118,17 +116,16 @@ public class AttendanceService {
         }
         String subjectCode = policy.getSubjectId();
         Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
-        String jwtToken = jwtService.extractTokenFromHeader(bearer);
-        String id = jwtService.getId(jwtToken);
         if (subjectOptional.isEmpty()) {
             return new ResponseEntity<>("Subject not found", HttpStatus.BAD_REQUEST);
         }
-        if (subjectOptional.get().getLecturerInCharge() == null
-                || !subjectOptional.get().getLecturerInCharge().getId().equals(id)) {
-            return new ResponseEntity<>("Unauthorized to take attendance", HttpStatus.UNAUTHORIZED);
+        ResponseEntity<Student> matriculationNumberResponse;
+        try {
+            matriculationNumberResponse = faceRecognitionService.recognizeFace(multipartFile,
+                    subjectCode, bearer);
+        }catch (HttpClientErrorException ex){
+            return new ResponseEntity<>(ex.getResponseBodyAsString(), HttpStatusCode.valueOf(ex.getStatusCode().value()));
         }
-        ResponseEntity<Student> matriculationNumberResponse = faceRecognitionService.recognizeFace(multipartFile,
-                subjectCode, bearer);
         if (matriculationNumberResponse.getStatusCode().isSameCodeAs(HttpStatus.NOT_FOUND)
                 || matriculationNumberResponse.getBody() == null) {
             return new ResponseEntity<>("Student not a member of the class", HttpStatus.NOT_FOUND);

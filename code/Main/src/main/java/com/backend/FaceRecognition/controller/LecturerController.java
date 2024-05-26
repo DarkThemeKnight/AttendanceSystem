@@ -44,7 +44,8 @@ public class LecturerController {
     public ResponseEntity<AttendanceRecordResponse> getRecord(@RequestParam String subjectCode,
             @RequestParam String date,
             @RequestParam("sort_id") int id,
-            @RequestHeader("Authorization") String bearer) {
+            @RequestHeader("Authorization") String bearer
+    ) {
         try {
             LocalDate localDate = LocalDate.parse(date);
             return attendanceService.getRecord(subjectCode, localDate, id, bearer);
@@ -54,7 +55,8 @@ public class LecturerController {
     }
 
     @GetMapping("/available-records")
-    public ResponseEntity<AvailableRecords> getAvailableRecord(@RequestParam String subjectCode,
+    public ResponseEntity<AvailableRecords> getAvailableRecord(
+            @RequestParam String subjectCode,
             @RequestHeader("Authorization") String bearer) {
         return attendanceService.getRecord(subjectCode, bearer);
     }
@@ -66,10 +68,10 @@ public class LecturerController {
     }
     @PostMapping("/add")
     public ResponseEntity<Response> addStudentToSubject(
-            @RequestBody StudentRequest requestSet,
+            @RequestParam String studentId,
             @RequestParam String subjectCode,
             @RequestHeader("Authorization") String bearer) {
-        return lecturerService.addStudentToSubject(bearer, requestSet, subjectCode);
+        return lecturerService.addStudentToSubject(bearer, studentId, subjectCode);
     }
     private ResponseEntity<Response> build(ResponseEntity<String> response) {
         return new ResponseEntity<>(new Response(response.getBody()), response.getStatusCode());
@@ -79,7 +81,8 @@ public class LecturerController {
     public ResponseEntity<Response> suspendStudentFromMarkingAttendance(
             @RequestParam String subjectCode,
             @RequestParam String studentId,
-            @RequestHeader("Authorization") String bearer,@RequestParam boolean suspend) {
+            @RequestHeader("Authorization") String bearer,
+            @RequestParam boolean suspend) {
         return lecturerService.suspendStudentFromMarkingAttendance(bearer, subjectCode, studentId,suspend);
     }
     @GetMapping("/student-record")

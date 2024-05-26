@@ -38,6 +38,8 @@ public class SecurityFilter {
                             authorizationManagerRequestMatcherRegistry
                                 .requestMatchers("api/v1/auth/**")
                                 .permitAll()
+                                    .requestMatchers("test")
+                                    .permitAll()
                                 .requestMatchers("api/v1/admin/**")
                                 .hasAnyAuthority("ROLE_ADMIN","ROLE_SUPER_ADMIN")
                                 .requestMatchers("api/v1/advisor/**")
@@ -46,6 +48,8 @@ public class SecurityFilter {
                                 .hasAuthority("ROLE_LECTURER")
                                 .requestMatchers("api/v1/encodings/**","api/v1/general/**","/api/v1/profile-picture/**")
                                 .authenticated()
+                                .requestMatchers("/api/v1/students/**")
+                      	         .hasRole("STUDENT")
                                 .requestMatchers("api/v1/super-admin/**")
                                 .hasRole("SUPER_ADMIN")
                                 .requestMatchers("api/v1/hardware/**")
@@ -62,12 +66,14 @@ public class SecurityFilter {
                                     httpSecurityExceptionHandlingConfigurer.
                                             authenticationEntryPoint(
                                                     (request, response, authException) ->{
-                                                        log.error("Unauthorized error: {}  cant access resource", authException.getMessage());
+                                                        log.error("Unauthorized error: cant access resource",authException.getMessage());
+                                                     
                                                         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
                                                     }
                                             )
                                             .accessDeniedHandler(
                                                     (request, response, accessDeniedException) ->{
+                                                 //   	log.error("",accessDeniedException);
                                                         log.error("Access denied error: {}", accessDeniedException.getMessage());
                                                         response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
                                                     }

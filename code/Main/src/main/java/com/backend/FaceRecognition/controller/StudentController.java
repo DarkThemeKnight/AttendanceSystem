@@ -23,7 +23,8 @@ public class StudentController {
         this.attendanceService = attendanceService;
     }
     @GetMapping("/print")
-    public ResponseEntity<ByteArrayResource> printAttendanceRecord(@RequestHeader("Authorization") String bearer, @RequestParam String subjectCode) {
+    public ResponseEntity<ByteArrayResource> printAttendanceRecord(@RequestHeader("Authorization") String bearer,
+                                                                   @RequestParam String subjectCode) {
         return attendanceService.printAttendanceRecord(bearer,subjectCode);
     }
     @PostMapping("/image")

@@ -109,7 +109,6 @@ public class AdminController {
     public ResponseEntity<AllSubjects> getSubjects(@RequestParam("student") String student){
         return adminService.getAllSubject(Boolean.parseBoolean(student));
     }
-
     @PostMapping("/clear-all-student-subjects")
     public ResponseEntity<Response> clearAllStudentSubjects() {
         return build(adminService.clearAllStudentSubjects());

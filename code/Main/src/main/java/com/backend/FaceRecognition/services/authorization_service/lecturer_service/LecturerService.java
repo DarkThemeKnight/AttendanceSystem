@@ -113,7 +113,7 @@ public class LecturerService {
     }
     @Transactional
     public ResponseEntity<Response> addStudentToSubject(String auth,
-                                                        StudentRequest requestSet,
+                                                        String requestSet,
                                                         String subjectCode) {
         Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
         if (subjectOptional.isEmpty()) {
@@ -124,7 +124,7 @@ public class LecturerService {
             return new ResponseEntity<>(new Response("Unauthorized"),HttpStatus.UNAUTHORIZED);
         }
         Student student = studentService
-                .getStudentById(requestSet.getStudent_id()).orElse(null);
+                .getStudentById(requestSet).orElse(null);
         if (student == null) {
             return new ResponseEntity<>(new Response("Student not found"), HttpStatus.NOT_FOUND);
         }

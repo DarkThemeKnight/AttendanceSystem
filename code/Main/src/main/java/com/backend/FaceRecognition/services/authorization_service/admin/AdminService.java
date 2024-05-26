@@ -248,6 +248,8 @@ public class AdminService {
                 .firstname(v.getFirstname())
                 .lastname(v.getLastname())
                 .middleName(v.getMiddleName())
+                .phoneNumber(v.getPhoneNumber())
+                .accountStatus(v.isEnabled()?"ACTIVE":"INACTIVE")
                 .schoolEmail(v.getSchoolEmail())
                 .build()).toList();
 
@@ -263,6 +265,8 @@ public class AdminService {
                         .id(v.getId())
                         .firstname(v.getFirstname())
                         .lastname(v.getLastname())
+                        .accountStatus(v.isEnabled()?"ACTIVE":"INACTIVE")
+                        .phoneNumber(v.getPhoneNumber())
                         .middleName(v.getMiddleName())
                         .schoolEmail(v.getSchoolEmail())
                         .build()).toList();
@@ -280,6 +284,8 @@ public class AdminService {
                         .firstname(v.getFirstname())
                         .lastname(v.getLastname())
                         .middleName(v.getMiddleName())
+                        .phoneNumber(v.getPhoneNumber())
+                        .accountStatus(v.isEnabled()?"ACTIVE":"INACTIVE")
                         .schoolEmail(v.getSchoolEmail())
                         .build()).toList();
                 yield ResponseEntity.ok(new GetListOfUsers(userx));
@@ -287,14 +293,11 @@ public class AdminService {
             case "hardware"->{
                 List<ApplicationUser> users = applicationUserService.findAllUsers();
                 users = users.stream().filter(user -> user.hasRole(Role.ROLE_HARDWARE)).toList();
-                List<ApplicationUserRequest> userx = users.stream().map(v -> ApplicationUserRequest.builder()
+                List<ApplicationUserRequest> applicationUserRequestList = users.stream().map(v -> ApplicationUserRequest.builder()
                         .id(v.getId())
-                        .firstname(v.getFirstname())
-                        .lastname(v.getLastname())
-                        .middleName(v.getMiddleName())
-                        .schoolEmail(v.getSchoolEmail())
+                        .address(v.getAddress())
                         .build()).toList();
-                yield ResponseEntity.ok(new GetListOfUsers(userx));
+                yield ResponseEntity.ok(new GetListOfUsers(applicationUserRequestList));
             }
             default -> ResponseEntity.badRequest().build();
         };
