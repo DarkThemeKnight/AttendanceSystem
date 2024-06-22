@@ -3,6 +3,7 @@ package com.backend.FaceRecognition.controller;
 import com.backend.FaceRecognition.services.extras.ProfilePictureService;
 import com.backend.FaceRecognition.utils.Response;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 @RestController

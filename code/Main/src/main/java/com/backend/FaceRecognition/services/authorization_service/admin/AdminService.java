@@ -4,8 +4,8 @@ import com.backend.FaceRecognition.constants.Role;
 import com.backend.FaceRecognition.entities.ApplicationUser;
 import com.backend.FaceRecognition.entities.Student;
 import com.backend.FaceRecognition.entities.Subject;
-import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
 import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
+import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
 import com.backend.FaceRecognition.utils.GetListOfUsers;
@@ -27,36 +27,42 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class AdminService {
-
     private final ApplicationUserService applicationUserService;
     private final SubjectService subjectService;
     private final StudentService studentService;
     private final JwtService jwtService;
 
     public AdminService(ApplicationUserService applicationUserService, SubjectService subjectService,
-            StudentService studentService, JwtService jwtService) {
+                        StudentService studentService, JwtService jwtService) {
         this.applicationUserService = applicationUserService;
         this.subjectService = subjectService;
         this.studentService = studentService;
         this.jwtService = jwtService;
-    }
 
-    public ResponseEntity<String> lockAccount(String id, String bearer) {
+    }
+    public ResponseEntity<String> lockAccount(String id, String bearer){
+        return changeAccountStatus(id, bearer,true);
+    }
+    public ResponseEntity<String> unlockAccount(String id, String bearer){
+        return changeAccountStatus(id, bearer,false);
+    }
+    public ResponseEntity<String> changeAccountStatus(String id, String bearer, boolean lock) {
         String jwt_token = jwtService.extractTokenFromHeader(bearer);
         String user_id = jwtService.getId(jwt_token);
         ApplicationUser requestingUser = applicationUserService.findUser(user_id).get();
         Set<Role> roles = requestingUser.getUserRole();
-        log.info("Role => {}",roles);
+        log.info("Role => {}", roles);
+
         Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
         if (!roles.contains(Role.ROLE_SUPER_ADMIN)) {
             if (userOptional.isPresent()) {
                 ApplicationUser user = userOptional.get();
                 if (user.hasRole(Role.ROLE_SUPER_ADMIN) || user.hasRole(Role.ROLE_ADMIN)) {
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to lock account.");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to change account status.");
                 }
-                user.setEnabled(false);
+                user.setEnabled(!lock); // false to lock, true to unlock
                 applicationUserService.update(user);
-                return ResponseEntity.ok("Account locked successfully.");
+                return ResponseEntity.ok(lock ? "Account locked successfully." : "Account unlocked successfully.");
             } else {
                 return ResponseEntity.notFound().build();
             }
@@ -65,44 +71,11 @@ public class AdminService {
                 ApplicationUser user = userOptional.get();
                 if (user.hasRole(Role.ROLE_SUPER_ADMIN)) {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body("Unauthorized to lock account.");
+                            .body("Unauthorized to change account status.");
                 }
-                user.setEnabled(false);
+                user.setEnabled(!lock); // false to lock, true to unlock
                 applicationUserService.update(user);
-                return ResponseEntity.ok("Account locked successfully.");
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        }
-    }
-
-    public ResponseEntity<String> unlockAccount(String id, String bearer) {
-        String jwt_token = jwtService.extractTokenFromHeader(bearer);
-        String user_id = jwtService.getId(jwt_token);
-        ApplicationUser requestingUser = applicationUserService.findUser(user_id).get();
-        Set<Role> roles = requestingUser.getUserRole();
-        Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
-        if (!roles.contains(Role.ROLE_SUPER_ADMIN)) {
-            if (userOptional.isPresent()) {
-                ApplicationUser user = userOptional.get();
-                if (user.hasRole(Role.ROLE_SUPER_ADMIN) || user.hasRole(Role.ROLE_ADMIN)) {
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to lock account.");
-                }
-                user.setEnabled(true);
-                applicationUserService.update(user);
-                return ResponseEntity.ok("Account unlocked successfully.");
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        } else {
-            if (userOptional.isPresent()) {
-                ApplicationUser user = userOptional.get();
-                if (user.hasRole(Role.ROLE_SUPER_ADMIN)) {
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized to unlock account.");
-                }
-                user.setEnabled(true); // Corrected to set the account as enabled
-                applicationUserService.update(user);
-                return ResponseEntity.ok("Account unlocked successfully.");
+                return ResponseEntity.ok(lock ? "Account locked successfully." : "Account unlocked successfully.");
             } else {
                 return ResponseEntity.notFound().build();
             }
@@ -162,9 +135,16 @@ public class AdminService {
                 subject.getLecturerInCharge() == null ? "" : subject.getLecturerInCharge().getId());
         Set<Student> students = studentService
                 .getAllStudentsOfferingCourse(subject.getSubjectCode());
-        Set<String> matriculationNum = students.stream()
-                .map(Student::getMatriculationNumber).collect(Collectors.toSet());
+        Set<SubjectResponse.Metadata> matriculationNum = students.
+                stream()
+                .map(v -> SubjectResponse.Metadata.builder()
+                        .studentId(v.getMatriculationNumber())
+                        .firstname(v.getFirstname())
+                        .lastname(v.getLastname())
+                        .build()
+                ).collect(Collectors.toSet());
         response.setStudents(matriculationNum);
+        response.setMessage("Fetched Successfully");
         if (subject.getLecturerInCharge() != null) {
             response.setIdLecturerInCharge(subject.getLecturerInCharge().getId());
         }
@@ -281,8 +261,8 @@ public class AdminService {
                 users = users.stream().filter(user -> user.hasRole(Role.ROLE_ADMIN)).toList();
                 List<ApplicationUserRequest> userx = users.stream().map(v -> ApplicationUserRequest.builder()
                         .id(v.getId())
-                        .firstname(v.getFirstname())
                         .lastname(v.getLastname())
+                        .firstname(v.getFirstname())
                         .middleName(v.getMiddleName())
                         .phoneNumber(v.getPhoneNumber())
                         .accountStatus(v.isEnabled()?"ACTIVE":"INACTIVE")

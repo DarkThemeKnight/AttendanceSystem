@@ -23,7 +23,16 @@ public class SubjectResponse {
     @JsonProperty("id_lecturer_in_charge")
     private String idLecturerInCharge;
     @JsonProperty("students")
-    private Set<String> students = new HashSet<>();
+    private Set<Metadata> students = new HashSet<>();
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Data
+    @Builder
+    public static class Metadata{
+        String studentId;
+        String firstname;
+        String lastname;
+    }
     public SubjectResponse(String message) {
         this.message = message;
     }

@@ -21,8 +21,10 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
@@ -62,12 +64,21 @@ public class AttendanceService {
         this.studentService = studentService;
         this.suspensionRepository = suspensionRepository;
     }
-
+    @Scheduled(fixedRate = 5 * 60 * 60 * 1000) // 5 hours in milliseconds
+    public void clear() {
+        log.info("clearing previous attendance policies");
+        List<AttendanceSetupPolicy> attendanceSetupPolicyList = attendanceSetupRepository.findAll();
+        attendanceSetupPolicyList = attendanceSetupPolicyList.stream()
+                .filter(v -> v.getAttendanceDateTime().plusMinutes(v.getDuration()).isBefore(LocalDateTime.now()))
+                .collect(Collectors.toList());
+        attendanceSetupRepository.deleteAll(attendanceSetupPolicyList);
+    }
     public ResponseEntity<String> initializeAttendance(String subjectCode, String authorization, int duration) {
         List<Attendance> attendances = attendanceRepository.findBySubjectIdAndDate(subjectCode, LocalDate.now());
         if (!attendances.isEmpty()) {
             return ResponseEntity.badRequest().body("attendance already initialized");
         }
+        log.info("Duration => {}",duration);
         if (duration < 10) {
             return ResponseEntity.badRequest().body("Duration at least 10 minutes");
         }
@@ -102,8 +113,7 @@ public class AttendanceService {
         return new ResponseEntity<>("code="+setup.getCode(), HttpStatus.OK);
     }
     public ResponseEntity<String> updateAttendanceStatus(String attendanceCode,
-                                                         MultipartFile multipartFile,
-                                                            String bearer) {
+                                                         MultipartFile multipartFile) {
         Optional<AttendanceSetupPolicy> attendanceSetup =
                 attendanceSetupRepository.findById(attendanceCode);
         if (attendanceSetup.isEmpty()) {
@@ -122,35 +132,35 @@ public class AttendanceService {
         ResponseEntity<Student> matriculationNumberResponse;
         try {
             matriculationNumberResponse = faceRecognitionService.recognizeFace(multipartFile,
-                    subjectCode, bearer);
-        }catch (HttpClientErrorException ex){
-            return new ResponseEntity<>(ex.getResponseBodyAsString(), HttpStatusCode.valueOf(ex.getStatusCode().value()));
-        }
-        if (matriculationNumberResponse.getStatusCode().isSameCodeAs(HttpStatus.NOT_FOUND)
-                || matriculationNumberResponse.getBody() == null) {
+                    subjectCode);
+
+            Student std = matriculationNumberResponse.getBody();
+            Attendance attendance = attendanceRepository.findByStudentIdAndSubjectIdAndDate(std.getMatriculationNumber(),
+                    subjectCode, LocalDate.now());
+            Optional<Suspension> isSuspended = suspensionRepository
+                    .findByStudentIdAndSubjectId(std.getMatriculationNumber(), subjectCode);
+            if (isSuspended.isPresent()) {
+                return new ResponseEntity<>("Student suspended", HttpStatus.FORBIDDEN);
+            }
+            if (attendance == null) {
+                return new ResponseEntity<>("Cannot mark attendance anymore", HttpStatus.FORBIDDEN);
+            }
+            if (attendance.getStatus() == AttendanceStatus.PRESENT) {
+                return new ResponseEntity<>("Already marked student", HttpStatus.CONFLICT);
+            }
+            attendance.setStatus(AttendanceStatus.PRESENT);
+            attendanceRepository.save(attendance);
+            return new ResponseEntity<>("Successfully marked attendance: student Id = " + std.getMatriculationNumber(),
+                    HttpStatus.OK);
+        }catch (HttpClientErrorException | HttpServerErrorException ex) {
+        if (ex.getStatusCode().isSameCodeAs(HttpStatus.NOT_FOUND) || ex.getStatusCode().isSameCodeAs(HttpStatus.BAD_REQUEST)) {
             return new ResponseEntity<>("Student not a member of the class", HttpStatus.NOT_FOUND);
-        } else if (matriculationNumberResponse.getStatusCode().isSameCodeAs(HttpStatus.INTERNAL_SERVER_ERROR)) {
+        } else if (ex.getStatusCode().isSameCodeAs(HttpStatus.INTERNAL_SERVER_ERROR)) {
             return new ResponseEntity<>("Error when processing file occurred", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        Student std = matriculationNumberResponse.getBody();
-        Attendance attendance = attendanceRepository.findByStudentIdAndSubjectIdAndDate(std.getMatriculationNumber(),
-                subjectCode, LocalDate.now());
-        Optional<Suspension> isSuspended = suspensionRepository
-                .findByStudentIdAndSubjectId(std.getMatriculationNumber(), subjectCode);
-        if (isSuspended.isPresent()) {
-            return new ResponseEntity<>("Student suspended", HttpStatus.FORBIDDEN);
         }
-        if (attendance == null) {
-            return new ResponseEntity<>("Cannot mark attendance anymore", HttpStatus.FORBIDDEN);
-        }
-        if (attendance.getStatus() == AttendanceStatus.PRESENT) {
-            return new ResponseEntity<>("Already marked student", HttpStatus.CONFLICT);
-        }
-        attendance.setStatus(AttendanceStatus.PRESENT);
-        attendanceRepository.save(attendance);
-        return new ResponseEntity<>("Successfully marked attendance: student Id = " + std.getMatriculationNumber(),
-                HttpStatus.OK);
-    }
+        return ResponseEntity.badRequest().build();
+}
 
     public ResponseEntity<AttendanceRecordResponse> getRecord(String subjectCode, LocalDate date, int sort,
             String bearer) {
@@ -179,53 +189,35 @@ public class AttendanceService {
 
     public ResponseEntity<ByteArrayResource> getAttendanceExcel(String subjectCode, LocalDate date, int sort,
             String bearer) {
-        Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
-        if (subjectOptional.isEmpty()) {
+
+        var record = getRecord(subjectCode,date,sort,bearer);
+        if (!record.getStatusCode().equals(HttpStatus.OK)){
             return ResponseEntity.badRequest().build();
         }
-        Subject subject = subjectOptional.get();
-        String jwtToken = jwtService.extractTokenFromHeader(bearer);
-        String id = jwtService.getId(jwtToken);
-        if (subjectOptional.get().getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)) {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
-        }
-        List<Attendance> studentAttendance = attendanceRepository.findBySubjectIdAndDate(subjectCode, date);
-        if (studentAttendance.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        switch (sort) {
-            case 1 -> studentAttendance = filterAttendanceByStatus(studentAttendance, AttendanceStatus.PRESENT);
-            case 2 -> studentAttendance = filterAttendanceByStatus(studentAttendance, AttendanceStatus.ABSENT);
-        }
-        // Create workbook and sheet
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Attendance Records");
-        // Create header row
         Row headerRow = sheet.createRow(0);
-        String[] headers = { "Matriculation Number", "Name", "Status" };
+        String[] headers = { "Matriculation Number", "Name", "Status"};
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
         }
-
-        // Add attendance records to the sheet
         int rowNum = 1;
-        for (Attendance attendance : studentAttendance) {
-            Student student = studentService.getStudentById(attendance.getStudentId()).orElse(null);
+        var body = Objects.requireNonNull(record.getBody()).getAttendanceData();
+        for (var attendance : body) {
+            Student student = studentService.getStudentById(attendance.getMatriculationNumber()).orElse(null);
             if (student == null) {
                 return ResponseEntity.badRequest().build();
             }
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(attendance.getStudentId());
+            row.createCell(0).setCellValue(attendance.getMatriculationNumber());
             row.createCell(1).setCellValue(student.getLastname() + " " + student.getFirstname());
             row.createCell(2).setCellValue(attendance.getStatus().toString());
         }
-
         // Auto-size columns
         for (int i = 0; i < headers.length; i++) {
             sheet.autoSizeColumn(i);
         }
-
         // Write workbook to ByteArrayOutputStream
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
@@ -265,9 +257,22 @@ public class AttendanceService {
         attendanceRecordResponse.setTitle(subject.getSubjectTitle());
         attendanceRecordResponse.setSubjectCode(subject.getSubjectCode());
         attendanceRecordResponse.setDate(date.toString());
-        for (Attendance attendance : attendanceList) {
-            attendanceRecordResponse.put(attendance.getStudentId(), attendance.getStatus());
-        }
+        attendanceRecordResponse.setAttendanceData(
+                attendanceList.stream().map(v
+                        -> {
+                    Student student = studentService.getStudentById(v.getStudentId()).orElse(null);
+                    if (student == null){
+                        return null;
+                    }
+                    return AttendanceRecordResponse.MetaData.builder()
+                            .firstname(student.getFirstname())
+                            .lastname(student.getLastname())
+                            .matriculationNumber(v.getStudentId())
+                            .status(v.getStatus())
+                            .build();
+                }
+                ).collect(Collectors.toList())
+        );
         return attendanceRecordResponse;
     }
 

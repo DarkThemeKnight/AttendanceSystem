@@ -7,6 +7,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 public class ResetPassword{
-    @JsonProperty("password")
+    String oldPassword;
     String newPassword;
 }

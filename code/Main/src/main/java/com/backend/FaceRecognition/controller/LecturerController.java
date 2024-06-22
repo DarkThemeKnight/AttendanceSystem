@@ -3,15 +3,14 @@ package com.backend.FaceRecognition.controller;
 import com.backend.FaceRecognition.services.attendance_service.AttendanceService;
 
 import com.backend.FaceRecognition.services.authorization_service.lecturer_service.LecturerService;
-import com.backend.FaceRecognition.utils.AttendanceRecordResponse;
-import com.backend.FaceRecognition.utils.AvailableRecords;
-import com.backend.FaceRecognition.utils.Response;
-import com.backend.FaceRecognition.utils.StudentAttendanceRecordResponse;
+import com.backend.FaceRecognition.utils.*;
 import com.backend.FaceRecognition.utils.student.StudentRequest;
+import com.backend.FaceRecognition.utils.subject.SubjectResponse;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +21,7 @@ import java.time.format.DateTimeParseException;
 @RestController
 @CrossOrigin("*")
 @RequestMapping("api/v1/attendance")
+@Component
 public class LecturerController {
     private final AttendanceService attendanceService;
     private final LecturerService lecturerService;
@@ -30,14 +30,22 @@ public class LecturerController {
         this.attendanceService = attendanceService;
         this.lecturerService = lecturerService;
     }
-    @PostMapping("/initialize")
+    @GetMapping
+    public ResponseEntity<SubjectResponse> getSubject(@RequestParam String subjectCode,@RequestHeader("Authorization") String bearer) {
+        return lecturerService.getSubject(subjectCode,bearer);
+    }
+        @PostMapping("/initialize")
     public ResponseEntity<Response> initializeAttendance(
-            @RequestParam String subjectCode,
-            @RequestParam int duration,
+            @RequestBody InitializeAttendance initializeAttendance,
             HttpServletRequest request) {
-        var r = attendanceService.initializeAttendance(subjectCode,
-                request.getHeader("Authorization"), duration);
-        return new ResponseEntity<>(new Response(r.getBody()), r.getStatusCode());
+        System.out.println(initializeAttendance);
+        try {
+            var r = attendanceService.initializeAttendance(initializeAttendance.getSubjectCode(),
+                    request.getHeader("Authorization"), initializeAttendance.getDuration());
+            return new ResponseEntity<>(new Response(r.getBody()), r.getStatusCode());
+        }catch (Exception e){
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @GetMapping("/record")
@@ -89,7 +97,7 @@ public class LecturerController {
     private ResponseEntity<StudentAttendanceRecordResponse> viewAttendanceRecord(
             @RequestHeader("Authorization") String bearer,
             @RequestParam String studentId,
-            String subjectCode) {
+            @RequestParam String subjectCode) {
         return lecturerService.viewAttendanceRecord(bearer, studentId, subjectCode);
     }
     @GetMapping("/print")

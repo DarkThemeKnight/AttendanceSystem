@@ -48,7 +48,8 @@ public class FaceRecognitionService {
      *         for students enrolled in the subject if the subject is found, with a status of OK (200).
      *         If the subject is not found, a not found status is returned.
      */
-    public ResponseEntity<EncodeImageListResponse> getEncodings(String subjectCode) {
+    public ResponseEntity<EncodeImageListResponse> getEncodings(String subjectCode)
+    {
         Subject subject = subjectService.findSubjectByCode(subjectCode).orElse(null);
         if (subject == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -59,15 +60,6 @@ public class FaceRecognitionService {
         return new ResponseEntity<>(getResponse(matriculationNumbers), HttpStatus.OK);
     }
 
-    /**
-     * Creates an EncodeImageListResponse object containing encoded image data for student matriculation numbers.
-     * This method creates an EncodeImageListResponse object containing the encoded image data for the specified
-     * list of student matriculation numbers.
-     * It retrieves the encoded image data using the encoding service.
-     *
-     * @param matriculationNumbers The list of matriculation numbers for which encoded image data is requested.
-     * @return An EncodeImageListResponse object containing encoded image data for student matriculation numbers.
-     */
     private EncodeImageListResponse getResponse(List<String> matriculationNumbers) {
         List<EncodedImageResponse> imageResponses = matriculationNumbers.stream()
                 .map(encodingService::getStudentEncodings)
@@ -81,27 +73,13 @@ public class FaceRecognitionService {
         return request;
     }
 
-    /**
-     * Recognizes a face from the provided image file.
-     * This method sends a face recognition request to the configured endpoint along with the image file
-     * and subject ID. It authenticates the request using the bearer token provided in the authorization header.
-     * If the recognition is successful and returns a student request, it retrieves the corresponding student
-     * information from the database based on the matriculation number provided in the response.
-     *
-     * @param file      The image file containing the face to be recognized.
-     * @param subjectId The ID of the subject associated with the recognition.
-     * @param bearer    The bearer token used for authentication.
-     * @return A ResponseEntity containing the recognized Student object if successful, or appropriate status
-     *         codes indicating errors such as not found, internal server error, or unauthorized.
-     */
-    public ResponseEntity<Student> recognizeFace(MultipartFile file, String subjectId, String bearer) {
+    public ResponseEntity<Student> recognizeFace(MultipartFile file, String subjectId) {
         String endpoint = faceRecognitionEndpoints.getEndpoint("rec") + "?subject_id=" + subjectId;
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-        headers.add("Authorization", bearer);
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", file.getResource()); // Assuming getResource() gives InputStreamResource
+        body.add("file", file.getResource());
         HttpEntity<MultiValueMap<String, Object>> requestEntity
                 = new HttpEntity<>(body, headers);
         ResponseEntity<StudentRequest> responseEntity = restTemplate.exchange(
@@ -110,7 +88,8 @@ public class FaceRecognitionService {
                 requestEntity,
                 StudentRequest.class);
 
-        if (responseEntity.getStatusCode().isSameCodeAs(HttpStatus.OK)) {
+        if (responseEntity.getStatusCode().isSameCodeAs(HttpStatus.OK))
+        {
             StudentRequest val = responseEntity.getBody();
             if (val == null) {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);

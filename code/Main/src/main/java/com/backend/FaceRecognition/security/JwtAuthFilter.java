@@ -1,4 +1,5 @@
 package com.backend.FaceRecognition.security;
+
 import com.backend.FaceRecognition.entities.ApplicationUser;
 import com.backend.FaceRecognition.repository.ApplicationUserRepository;
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
@@ -23,71 +24,86 @@ import java.util.Arrays;
 @Component
 @Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
+
     private final JwtService jwtService;
     private final ApplicationUserRepository userRepository;
-    public JwtAuthFilter(JwtService jwtService, ApplicationUserRepository userService ){
+
+    public JwtAuthFilter(JwtService jwtService, ApplicationUserRepository userService) {
         this.jwtService = jwtService;
         this.userRepository = userService;
     }
+
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        log.info("Entry {}",request.getRequestURI());
         final String authHeader = request.getHeader("Authorization");
         final String token;
         final String userId;
-        if (authHeader==null || !authHeader.startsWith("Bearer ")){
-            boolean val = authHeader==null;
-            if (val){
+
+        log.debug("Request received with Authorization header: {}", authHeader);
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            if (authHeader == null) {
                 log.info("Null Token");
-            }
-            else{
+            } else {
                 log.info("Token does not start with \"Bearer \"");
             }
-            filterChain.doFilter(request,response);
+            filterChain.doFilter(request, response);
             return;
         }
+
         try {
             token = authHeader.substring(7);
+            log.debug("Token extracted: {}", token);
             userId = jwtService.getId(token);
-            if(!userId.isEmpty() && SecurityContextHolder.getContext().getAuthentication() == null){
+            log.debug("User ID extracted from token: {}", userId);
+
+            if (!userId.isEmpty() && SecurityContextHolder.getContext().getAuthentication() == null) {
                 ApplicationUser applicationUser = userRepository.findById(userId).orElse(null);
-                if(applicationUser == null){
-                    log.info("User name not found");
-                    response.sendError(HttpStatus.UNAUTHORIZED.value(),"Username not found");
+
+                if (applicationUser == null) {
+                    log.warn("User not found for ID: {}", userId);
+                    response.sendError(HttpStatus.UNAUTHORIZED.value(), "Username not found");
                     return;
                 }
-                if (!applicationUser.isEnabled()){
-                    log.info("Disabled");
-                    response.sendError(HttpStatus.UNAUTHORIZED.value(),"Disabled Account");
+
+                log.debug("User found: {}", applicationUser);
+
+                if (!applicationUser.isEnabled()) {
+                    log.warn("User account is disabled: {}", userId);
+                    response.sendError(HttpStatus.UNAUTHORIZED.value(), "Disabled Account");
                     return;
                 }
-                if (!applicationUser.isCredentialsNonExpired()){
-                    log.info("Expired Credentials");
-                    response.sendError(HttpStatus.UNAUTHORIZED.value(),"Expired credentials");
+
+                if (!applicationUser.isCredentialsNonExpired()) {
+                    log.warn("User credentials are expired: {}", userId);
+                    response.sendError(HttpStatus.UNAUTHORIZED.value(), "Expired credentials");
                     return;
                 }
-                if (jwtService.isValidToken(token, applicationUser)){
+
+                if (jwtService.isValidToken(token, applicationUser)) {
+                    log.debug("Token is valid for user: {}", userId);
                     SecurityContext context = SecurityContextHolder.createEmptyContext();
-                    log.info("User Id => {}",applicationUser.getId());
-                    log.info("User authorities => {}",applicationUser.getAuthorities());
+
                     UsernamePasswordAuthenticationToken authenticationToken =
-                            new UsernamePasswordAuthenticationToken(userRepository, null, applicationUser.getAuthorities());
+                            new UsernamePasswordAuthenticationToken(applicationUser, null, applicationUser.getAuthorities());
                     authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     context.setAuthentication(authenticationToken);
                     SecurityContextHolder.setContext(context);
+
+                    log.debug("Authentication set in security context for user: {}", userId);
                 }
             }
-        }catch (MalformedJwtException e){
-            log.info("Malformed Token");
-            response.sendError(HttpStatus.BAD_REQUEST.value(),"Malformed Jwt Exception");
-        }catch (Exception e){
-            log.info("Error");
-            response.sendError(HttpStatus.BAD_REQUEST.value(),"Exception occur "+e.getMessage());
+        } catch (MalformedJwtException e) {
+            log.error("Malformed Token: {}", e.getMessage());
+            response.sendError(HttpStatus.BAD_REQUEST.value(), "Malformed Jwt Exception");
+        } catch (Exception e) {
+            log.error("Error occurred during token processing: {}", e.getMessage(), e);
+            response.sendError(HttpStatus.BAD_REQUEST.value(), "Exception occur " + e.getMessage());
             return;
         }
+
         filterChain.doFilter(request, response);
     }
-
 }

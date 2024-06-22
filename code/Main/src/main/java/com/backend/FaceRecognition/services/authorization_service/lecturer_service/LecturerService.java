@@ -10,6 +10,7 @@ import com.backend.FaceRecognition.services.subject.SubjectService;
 import com.backend.FaceRecognition.utils.Response;
 import com.backend.FaceRecognition.utils.StudentAttendanceRecordResponse;
 import com.backend.FaceRecognition.utils.student.StudentRequest;
+import com.backend.FaceRecognition.utils.subject.SubjectResponse;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -36,12 +39,50 @@ public class LecturerService {
         this.suspensionRepository = suspensionRepository;
         this.jwtService = jwtService;
     }
-
+    public ResponseEntity<SubjectResponse> getSubject(String subjectCode,String bearer) {
+           Optional<Subject> optionalSubject = subjectService.findSubjectByCode(subjectCode);
+           log.info("getting subject");
+           if (optionalSubject.isEmpty()) {
+               return new ResponseEntity<>(new SubjectResponse("Subject not found"),
+                       HttpStatus.NOT_FOUND);
+           }
+        if(cantPerformOperation(bearer,optionalSubject.get())) {
+            SubjectResponse response = parse(optionalSubject.get());
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+        else {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+    }
     private boolean cantPerformOperation(String authorizationHeader, Subject subject){
         String jwt_Token = jwtService.extractTokenFromHeader(authorizationHeader);
         String lecturerId = jwtService.getId(jwt_Token);
         return !subject.getLecturerInCharge().getId().equals(lecturerId);
     }
+    public SubjectResponse parse(Subject subject) {
+        SubjectResponse response = new SubjectResponse();
+        response.setSubjectCode(subject.getSubjectCode());
+        response.setSubjectTitle(subject.getSubjectTitle());
+        response.setIdLecturerInCharge(
+                subject.getLecturerInCharge() == null ? "" : subject.getLecturerInCharge().getId());
+        Set<Student> students = studentService
+                .getAllStudentsOfferingCourse(subject.getSubjectCode());
+        Set<SubjectResponse.Metadata> matriculationNum = students.
+                stream()
+                .map(v -> SubjectResponse.Metadata.builder()
+                        .studentId(v.getMatriculationNumber())
+                        .firstname(v.getFirstname())
+                        .lastname(v.getLastname())
+                        .build()
+                ).collect(Collectors.toSet());
+        response.setStudents(matriculationNum);
+        response.setMessage("Fetched Successfully");
+        if (subject.getLecturerInCharge() != null) {
+            response.setIdLecturerInCharge(subject.getLecturerInCharge().getId());
+        }
+        return response;
+    }
+
 
     public ResponseEntity<String> clearSubjectStudents(String subjectCode,String auth) {
         Optional<Subject> optionalSubject = subjectService.findSubjectByCode(subjectCode);

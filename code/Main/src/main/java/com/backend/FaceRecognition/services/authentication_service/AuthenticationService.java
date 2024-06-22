@@ -20,7 +20,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -172,25 +171,7 @@ public class AuthenticationService {
         return new ResponseEntity<>(new AuthenticationResponse("Invalid Username or Password", null, new HashSet<>()),
                 HttpStatus.NOT_FOUND);
     }
-    /**
-     * Logs out a user based on the provided JWT token.
-     * This method logs out a user based on the provided JWT token.
-     * It first extracts the user ID from
-     * the JWT token.
-     * Then, it retrieves the user based on the extracted ID from the application
-     * user service.
-     * If the user is found, it sets the user's credential expiration status too
-     * false to invalidate the token
-     * and updates the user using the application user service.
-     * Finally, it returns a success response indicating
-     * that the logout was successful.
-     * If the user is not found, a not found response is returned.
-     *
-     * @param bearerToken The JWT token provided in the Authorization header.
-     * @return A ResponseEntity containing an AuthenticationResponse object.
-     *         If the logout is successful, a success response (200) is returned.
-     *         If the user is not found, a not found response (404) is returned.
-     */
+
     public ResponseEntity<Void> logout(String bearerToken) {
         String id = jwtService.getId(jwtService.extractTokenFromHeader(bearerToken));
         Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);
@@ -223,6 +204,18 @@ public class AuthenticationService {
         resetPasswordTokenSaltRepository.delete(val);
         return applicationUserService.resetPassword(val.getUserId(),resetPassword);
     }
-
-
+    public ResponseEntity<Response> updatePassword(String bearer, ResetPassword resetPassword) {
+        jwtService.extractTokenFromHeader(bearer);
+        String userId = jwtService.getId(jwtService.extractTokenFromHeader(bearer));
+        ApplicationUser applicationUser = applicationUserService.findUser(userId).orElse(null);
+        if (applicationUser == null){
+            return ResponseEntity.badRequest().build();
+        }
+        if (passwordEncoder.matches(resetPassword.getOldPassword(),applicationUser.getPassword())){
+            applicationUser.setPassword(passwordEncoder.encode(resetPassword.getNewPassword()));
+            applicationUserService.update(applicationUser);
+            return ResponseEntity.ok(new Response("Updated Successfully"));
+        }
+        return ResponseEntity.ok(new Response("User does not exist"));
+    }
 }

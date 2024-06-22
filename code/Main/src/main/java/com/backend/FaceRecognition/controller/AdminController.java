@@ -6,6 +6,7 @@ import com.backend.FaceRecognition.repository.NotificationRepository;
 import com.backend.FaceRecognition.services.authentication_service.AuthenticationService;
 import com.backend.FaceRecognition.services.authorization_service.admin.AdminService;
 import com.backend.FaceRecognition.services.authorization_service.super_admin.SuperUserService;
+import com.backend.FaceRecognition.utils.AttendanceStatsDTO;
 import com.backend.FaceRecognition.utils.GetListOfUsers;
 import com.backend.FaceRecognition.utils.NotificationRequest;
 import com.backend.FaceRecognition.utils.Response;
@@ -16,6 +17,7 @@ import com.backend.FaceRecognition.utils.subject.SubjectResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -26,6 +28,7 @@ import java.time.format.DateTimeParseException;
 @CrossOrigin("*")
 @Slf4j
 @RequestMapping("api/v1/admin")
+@Component
 public class AdminController {
     private final AdminService adminService;
     private final AuthenticationService authenticationService;
@@ -39,7 +42,6 @@ public class AdminController {
         this.notificationRepository = notificationRepository;
         this.superUserService = superUserService;
     }
-
     @PostMapping("/notification")
     public ResponseEntity<Response> notification(@RequestBody NotificationRequest request) {
         try {
@@ -108,10 +110,6 @@ public class AdminController {
     @GetMapping("/subject")
     public ResponseEntity<AllSubjects> getSubjects(@RequestParam("student") String student){
         return adminService.getAllSubject(Boolean.parseBoolean(student));
-    }
-    @PostMapping("/clear-all-student-subjects")
-    public ResponseEntity<Response> clearAllStudentSubjects() {
-        return build(adminService.clearAllStudentSubjects());
     }
 
 
