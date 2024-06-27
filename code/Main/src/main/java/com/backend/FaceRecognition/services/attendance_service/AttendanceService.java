@@ -9,16 +9,16 @@ import com.backend.FaceRecognition.services.face_recognition_service.FaceRecogni
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
-import com.backend.FaceRecognition.utils.AttendanceRecordResponse;
-import com.backend.FaceRecognition.utils.AvailableRecords;
-import com.backend.FaceRecognition.utils.StudentAttendanceRecordResponse;
-import com.backend.FaceRecognition.utils.UniqueCodeGenerator;
+import com.backend.FaceRecognition.utils.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,11 +31,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -51,7 +49,7 @@ public class AttendanceService {
     private final JwtService jwtService;
     private final StudentService studentService;
     private final SuspensionRepository suspensionRepository;
-
+    @Lazy
     public AttendanceService(AttendanceSetupPolicyRepository attendanceSetupRepository,
             AttendanceRepository attendanceRepository, FaceRecognitionService faceRecognitionService,
             SubjectService subjectService, JwtService jwtService, StudentService studentService,
@@ -112,7 +110,58 @@ public class AttendanceService {
         attendanceRepository.saveAll(studentAttendance);
         return new ResponseEntity<>("code="+setup.getCode(), HttpStatus.OK);
     }
-    public ResponseEntity<String> updateAttendanceStatus(String attendanceCode,
+    public ResponseEntity<String> initializeAttendance(String subjectCode, String authorization, int duration, LocalDate date) {
+        List<Attendance> attendances = attendanceRepository.findBySubjectIdAndDate(subjectCode, date);
+        if (!attendances.isEmpty()) {
+            return ResponseEntity.badRequest().body("attendance already initialized");
+        }
+        log.info("Duration => {}",duration);
+        if (duration < 10) {
+            return ResponseEntity.badRequest().body("Duration at least 10 minutes");
+        }
+//        String jwtToken = jwtService.extractTokenFromHeader(authorization);
+        String id = jwtService.getId(authorization);
+        Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
+        if (subjectOptional.isEmpty()) {
+            return new ResponseEntity<>("Subject not found", HttpStatus.NOT_FOUND);
+        }
+        Subject subject = subjectOptional.get();
+        if (subject.getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)) {
+            return new ResponseEntity<>("Unauthorized to take attendance", HttpStatus.UNAUTHORIZED);
+        }
+        Set<Student> allPossibleAttendees = new HashSet<>(studentService.getAllStudentsOfferingCourse2(subjectCode));
+        log.info("Size => "+allPossibleAttendees.size());
+        List<Attendance> studentAttendance = allPossibleAttendees.stream()
+                .map(student -> new Attendance(student.getMatriculationNumber(),
+                        subject.getSubjectCode(),
+                        date,
+                        AttendanceStatus.ABSENT))
+                .toList();
+        AttendanceSetupPolicy setup = AttendanceSetupPolicy.builder()
+                .code(UniqueCodeGenerator.generateCode(10))
+                .duration(duration)
+                .subjectId(subjectCode)
+                .attendanceDate(date)
+                .attendanceDateTime(LocalDateTime.of(date, LocalTime.now()))
+                .build();
+        setup = attendanceSetupRepository.save(setup);
+        attendanceRepository.saveAll(studentAttendance);
+        return new ResponseEntity<>("code="+setup.getCode(), HttpStatus.OK);
+    }
+    @SneakyThrows
+    public ResponseEntity<String> updateAttendanceStatus(String attendanceCode, String studentId, AttendanceStatus status) {
+        Optional<AttendanceSetupPolicy> attendanceSetup =
+                attendanceSetupRepository.findById(attendanceCode);
+        if (attendanceSetup.isEmpty()) {
+            return ResponseEntity.badRequest().body("Attendance is not initialized yet");
+        }
+        var policy =attendanceSetup.get();
+        Attendance attendance = attendanceRepository.findByStudentIdAndSubjectIdAndDate(studentId,policy.getSubjectId(),policy.getAttendanceDate());
+        attendance.setStatus(status);
+        attendanceRepository.save(attendance);
+        return ResponseEntity.ok(new ObjectMapper().writeValueAsString(new Response("Success")));
+    }
+        public ResponseEntity<String> updateAttendanceStatus(String attendanceCode,
                                                          MultipartFile multipartFile) {
         Optional<AttendanceSetupPolicy> attendanceSetup =
                 attendanceSetupRepository.findById(attendanceCode);
@@ -133,12 +182,11 @@ public class AttendanceService {
         try {
             matriculationNumberResponse = faceRecognitionService.recognizeFace(multipartFile,
                     subjectCode);
-
-            Student std = matriculationNumberResponse.getBody();
-            Attendance attendance = attendanceRepository.findByStudentIdAndSubjectIdAndDate(std.getMatriculationNumber(),
-                    subjectCode, LocalDate.now());
-            Optional<Suspension> isSuspended = suspensionRepository
-                    .findByStudentIdAndSubjectId(std.getMatriculationNumber(), subjectCode);
+                Student std = matriculationNumberResponse.getBody();
+                Attendance attendance = attendanceRepository.findByStudentIdAndSubjectIdAndDate(std.getMatriculationNumber(),
+                        subjectCode, LocalDate.now());
+                Optional<Suspension> isSuspended = suspensionRepository
+                        .findByStudentIdAndSubjectId(std.getMatriculationNumber(), subjectCode);
             if (isSuspended.isPresent()) {
                 return new ResponseEntity<>("Student suspended", HttpStatus.FORBIDDEN);
             }
@@ -158,6 +206,8 @@ public class AttendanceService {
         } else if (ex.getStatusCode().isSameCodeAs(HttpStatus.INTERNAL_SERVER_ERROR)) {
             return new ResponseEntity<>("Error when processing file occurred", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+        }catch (Exception e) {
+        return new ResponseEntity<>("Failed to mark attendance", HttpStatus.BAD_REQUEST);
         }
         return ResponseEntity.badRequest().build();
 }

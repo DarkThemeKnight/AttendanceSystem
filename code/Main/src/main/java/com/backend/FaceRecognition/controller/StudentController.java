@@ -5,10 +5,12 @@ import com.backend.FaceRecognition.services.attendance_service.AttendanceService
 import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
 import com.backend.FaceRecognition.utils.Response;
 import com.backend.FaceRecognition.utils.StudentAttendanceRecordResponse;
+import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,11 +29,10 @@ public class StudentController {
     @PostMapping("/update")
     public ResponseEntity<Response> updateAttendanceStatus(
             @RequestParam String attendanceCode,
-            @RequestParam MultipartFile file) {
+            @RequestParam(name="image") MultipartFile file) {
         ResponseEntity<String> response = attendanceService.updateAttendanceStatus(attendanceCode,
                 file);
         return new ResponseEntity<>(new Response(response.getBody()), response.getStatusCode());
-
     }
     @GetMapping("/print")
     public ResponseEntity<ByteArrayResource> printAttendanceRecord(@RequestHeader("Authorization") String bearer,

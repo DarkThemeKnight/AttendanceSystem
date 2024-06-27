@@ -1,10 +1,7 @@
 package com.backend.FaceRecognition.entities;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -13,6 +10,7 @@ import java.util.*;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Student {
     @Id
     @Column(name = "matriculation_number") //this is the id
@@ -45,5 +43,17 @@ public class Student {
     }
     public void clear(){
         subjects.clear();
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) return true;
+        if (!(object instanceof Student student)) return false;
+        return Objects.equals(getMatriculationNumber(), student.getMatriculationNumber());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getMatriculationNumber());
     }
 }

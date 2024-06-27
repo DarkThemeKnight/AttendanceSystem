@@ -4,6 +4,7 @@ import com.backend.FaceRecognition.entities.ApplicationUser;
 import com.backend.FaceRecognition.repository.ApplicationUserRepository;
 import com.backend.FaceRecognition.utils.ResetPassword;
 import com.backend.FaceRecognition.utils.Response;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.HttpStatus;
@@ -15,13 +16,12 @@ import java.util.Optional;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class ApplicationUserService {
+
     private final ApplicationUserRepository applicationUserRepository;
     private final PasswordEncoder encoder;
-    public ApplicationUserService(ApplicationUserRepository applicationUserRepository, PasswordEncoder encoder) {
-        this.applicationUserRepository = applicationUserRepository;
-        this.encoder = encoder;
-    }
+
     public Optional<ApplicationUser> findUser(String userId){
         return applicationUserRepository.findById(userId);
     }

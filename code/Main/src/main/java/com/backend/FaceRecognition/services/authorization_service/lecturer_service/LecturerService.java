@@ -46,7 +46,7 @@ public class LecturerService {
                return new ResponseEntity<>(new SubjectResponse("Subject not found"),
                        HttpStatus.NOT_FOUND);
            }
-        if(cantPerformOperation(bearer,optionalSubject.get())) {
+        if(!cantPerformOperation(bearer,optionalSubject.get())) {
             SubjectResponse response = parse(optionalSubject.get());
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
@@ -57,6 +57,11 @@ public class LecturerService {
     private boolean cantPerformOperation(String authorizationHeader, Subject subject){
         String jwt_Token = jwtService.extractTokenFromHeader(authorizationHeader);
         String lecturerId = jwtService.getId(jwt_Token);
+        return !subject.getLecturerInCharge().getId().equals(lecturerId);
+    }
+    private boolean cantPerformOperation2(String authorizationHeader, Subject subject){
+//        String jwt_Token = jwtService.extractTokenFromHeader(authorizationHeader);
+        String lecturerId = jwtService.getId(authorizationHeader);
         return !subject.getLecturerInCharge().getId().equals(lecturerId);
     }
     public SubjectResponse parse(Subject subject) {
@@ -166,6 +171,29 @@ public class LecturerService {
         }
         Student student = studentService
                 .getStudentById(requestSet).orElse(null);
+        if (student == null) {
+            return new ResponseEntity<>(new Response("Student not found"), HttpStatus.NOT_FOUND);
+        }
+        student.add(subject);
+        studentService.saveStudent(student);
+        subjectService.save(subject);
+        return new ResponseEntity<>(new Response("Student set successfully"), HttpStatus.OK);
+    }
+
+    @Transactional
+    public ResponseEntity<Response> addStudentToSubject2(String auth,
+                                                        String studentId,
+                                                        String subjectCode) {
+        Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
+        if (subjectOptional.isEmpty()) {
+            return new ResponseEntity<>(new Response("Subject not found"), HttpStatus.NOT_FOUND);
+        }
+        Subject subject = subjectOptional.get();
+        if (cantPerformOperation2(auth, subject)){
+            return new ResponseEntity<>(new Response("Unauthorized"),HttpStatus.UNAUTHORIZED);
+        }
+        Student student = studentService
+                .getStudentById(studentId).orElse(null);
         if (student == null) {
             return new ResponseEntity<>(new Response("Student not found"), HttpStatus.NOT_FOUND);
         }

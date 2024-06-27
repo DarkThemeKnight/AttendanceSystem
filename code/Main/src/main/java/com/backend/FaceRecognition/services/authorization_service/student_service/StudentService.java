@@ -15,6 +15,7 @@ import com.backend.FaceRecognition.utils.FaceRecognitionEndpoints;
 import com.backend.FaceRecognition.utils.StudentProfile;
 import jakarta.transaction.Transactional;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -22,10 +23,8 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
@@ -39,6 +38,7 @@ public class StudentService {
     private final AttendanceRepository attendanceRepository;
     private final ProfilePictureService profilePictureService;
 
+    @Lazy
     public StudentService(EncodedImagesRepository encodedImagesRepository, StudentRepository studentRepository, FaceRecognitionEndpoints faceRecognitionEndpoints, JwtService jwtService, @Lazy ApplicationUserService applicationUserService, AttendanceRepository attendanceRepository, ProfilePictureService profilePictureService) {
         this.encodedImagesRepository = encodedImagesRepository;
         this.studentRepository = studentRepository;
@@ -101,8 +101,50 @@ public class StudentService {
             return ResponseEntity.badRequest().body(responseBody);
         }
     }
+    @Transactional
+    public ResponseEntity<String> addStudentImage(ByteArrayResource file, String token) {
+        String studentId = jwtService.getId(token);
+        // send request to face recognition
+        Student student =  getStudentById(studentId).orElse(null);
+        if (student == null) {
+            return new ResponseEntity<>("Student not found", HttpStatus.NOT_FOUND);
+        }
+        String url = faceRecognitionEndpoints.getEndpoint("ip")+"?student_id="+studentId; // Your FastAPI endpoint URL
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", file); // Assuming getResource() gives InputStreamResource
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        try {
+            ResponseEntity<EncodedImage> responseEntity = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    requestEntity,
+                    EncodedImage.class);
+            EncodedImage image = responseEntity.getBody();
+            if (image == null) {
+                return new ResponseEntity<>("Bad Image Could not encode image", HttpStatus.BAD_REQUEST);
+            }
+            if (image.getMessage().equals("Invalid Amount of Faces detected")) {
+                return  new ResponseEntity<>("Invalid amount of faces detected",HttpStatus.BAD_REQUEST);
+            }
+            EncodedImages imageEntity = EncodedImages.builder()
+                    .data(image.getData())
+                    .matriculationNumber(studentId)
+                    .build();
+            encodedImagesRepository.save(imageEntity);
+            return new ResponseEntity<>("Saved successfully", HttpStatus.OK);
+
+        }catch (HttpClientErrorException.BadRequest e){
+            String responseBody = e.getResponseBodyAs(String.class);
+            return ResponseEntity.badRequest().body(responseBody);
+        }
+    }
     public Set<Student> getAllStudentsOfferingCourse(String subjectCode) {
         return studentRepository.findAllStudentsBySubjectCode(subjectCode);
+    }
+    public ArrayList<Student> getAllStudentsOfferingCourse2(String subjectCode) {
+        return studentRepository.findAllStudentsBySubjectCodeArrayList(subjectCode);
     }
     public ResponseEntity<StudentProfile> getMyProfile(String studentId){
         ApplicationUser applicationUser = applicationUserService.findUser(studentId).orElse(null);

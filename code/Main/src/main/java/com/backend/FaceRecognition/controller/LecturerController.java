@@ -32,9 +32,10 @@ public class LecturerController {
     }
     @GetMapping
     public ResponseEntity<SubjectResponse> getSubject(@RequestParam String subjectCode,@RequestHeader("Authorization") String bearer) {
+//        System.out.println("Vaxx");
         return lecturerService.getSubject(subjectCode,bearer);
     }
-        @PostMapping("/initialize")
+    @PostMapping("/initialize")
     public ResponseEntity<Response> initializeAttendance(
             @RequestBody InitializeAttendance initializeAttendance,
             HttpServletRequest request) {

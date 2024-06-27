@@ -36,27 +36,31 @@ public class SecurityFilter {
                     .sessionManagement(managementConfigure -> managementConfigure.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authorizeHttpRequests(authorizationManagerRequestMatcherRegistry ->
                             authorizationManagerRequestMatcherRegistry
-                                .requestMatchers("api/v1/auth/**")
-                                .permitAll()
+                                    .requestMatchers("api/v1/auth/**")
+                                    .permitAll()
                                     .requestMatchers("test")
                                     .permitAll()
-                                .requestMatchers("api/v1/admin/**")
-                                .hasAnyAuthority("ROLE_ADMIN","ROLE_SUPER_ADMIN")
-                                .requestMatchers("api/v1/advisor/**")
-                                .hasAnyAuthority("ROLE_ADVISOR","ROLE_ADMIN","ROLE_SUPER_ADMIN")
-                                .requestMatchers("api/v1/attendance/**")
-                                .hasAuthority("ROLE_LECTURER")
-                                .requestMatchers("api/v1/encodings/**","api/v1/general/**","/api/v1/profile-picture/**")
-                                .authenticated()
-                                .requestMatchers("/api/v1/students/**")
-                      	         .hasRole("STUDENT")
-                                .requestMatchers("api/v1/super-admin/**")
-                                .hasRole("SUPER_ADMIN")
-                                .requestMatchers("api/v1/hardware/**")
-                                .hasAuthority("ROLE_HARDWARE")
-                                .requestMatchers("test/**")
-                                .permitAll()
-                                .anyRequest()
+                                    .requestMatchers("api/v1/admin/**")
+                                    .hasAnyAuthority("ROLE_ADMIN","ROLE_SUPER_ADMIN")
+                                    .requestMatchers("api/v1/advisor/**")
+                                    .hasAnyAuthority("ROLE_ADVISOR","ROLE_ADMIN","ROLE_SUPER_ADMIN")
+                                    .requestMatchers("api/v1/attendance/**")
+                                    .hasAuthority("ROLE_LECTURER")
+                                    .requestMatchers("api/v1/general/**","/api/v1/profile-picture/**")
+                                    .authenticated()
+                                    .requestMatchers("api/v1/encodings/**")
+                                    .permitAll()
+                                    .requestMatchers("/api/v1/students/update")
+                                    .permitAll()
+                                    .requestMatchers("/api/v1/students/image")
+                                    .authenticated()
+                                    .requestMatchers("api/v1/super-admin/**")
+                                    .hasRole("SUPER_ADMIN")
+                                    .requestMatchers("api/v1/hardware/**")
+                                    .hasAuthority("ROLE_HARDWARE")
+                                    .requestMatchers("test/**")
+                                    .permitAll()
+                                    .anyRequest()
                                     .denyAll()
                     )
                     .authenticationManager(authenticationManager)
@@ -66,15 +70,13 @@ public class SecurityFilter {
                                     httpSecurityExceptionHandlingConfigurer.
                                             authenticationEntryPoint(
                                                     (request, response, authException) ->{
-                                                        log.error("Unauthorized error: cant access resource",authException.getMessage());
-                                                     
+                                                        log.error("Unauthorized error: cant access resource");
                                                         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
                                                     }
                                             )
                                             .accessDeniedHandler(
                                                     (request, response, accessDeniedException) ->{
-                                                 //   	log.error("",accessDeniedException);
-                                                        log.error("Access denied error: {}", accessDeniedException.getMessage());
+                                                        log.error("Access denied error");
                                                         response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
                                                     }
                                             )
