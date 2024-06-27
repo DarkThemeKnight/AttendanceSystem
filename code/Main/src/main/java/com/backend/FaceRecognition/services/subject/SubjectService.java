@@ -1,11 +1,13 @@
 package com.backend.FaceRecognition.services.subject;
 
+import com.backend.FaceRecognition.entities.ApplicationUser;
 import com.backend.FaceRecognition.entities.Subject;
 import com.backend.FaceRecognition.repository.SubjectRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class SubjectService {
@@ -24,5 +26,9 @@ public class SubjectService {
     }
     public List<Subject> findAll(){
         return subjectRepository.findAll();
+    }
+    public Set<Subject> findAllByLecuturerInCharge(ApplicationUser lecturerInCharge){
+        return subjectRepository.findAllByLecturerInCharge(lecturerInCharge);
+
     }
 }

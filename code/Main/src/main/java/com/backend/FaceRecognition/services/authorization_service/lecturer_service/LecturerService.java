@@ -7,12 +7,13 @@ import com.backend.FaceRecognition.services.application_user.ApplicationUserServ
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
+import com.backend.FaceRecognition.utils.ListOfSubjects;
 import com.backend.FaceRecognition.utils.Response;
 import com.backend.FaceRecognition.utils.StudentAttendanceRecordResponse;
-import com.backend.FaceRecognition.utils.student.StudentRequest;
 import com.backend.FaceRecognition.utils.subject.SubjectResponse;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -31,13 +32,15 @@ public class LecturerService {
     private final SubjectService subjectService;
     private final SuspensionRepository suspensionRepository;
     private final JwtService jwtService;
+    private final ApplicationUserService applicationUserService;
 
-    public LecturerService(AttendanceService attendanceService, StudentService studentService, SubjectService subjectService, SuspensionRepository suspensionRepository, JwtService jwtService) {
+    public LecturerService(AttendanceService attendanceService, StudentService studentService, SubjectService subjectService, SuspensionRepository suspensionRepository, JwtService jwtService,@Lazy ApplicationUserService applicationUserService) {
         this.attendanceService = attendanceService;
         this.studentService = studentService;
         this.subjectService = subjectService;
         this.suspensionRepository = suspensionRepository;
         this.jwtService = jwtService;
+        this.applicationUserService = applicationUserService;
     }
     public ResponseEntity<SubjectResponse> getSubject(String subjectCode,String bearer) {
            Optional<Subject> optionalSubject = subjectService.findSubjectByCode(subjectCode);
@@ -203,4 +206,21 @@ public class LecturerService {
         return new ResponseEntity<>(new Response("Student set successfully"), HttpStatus.OK);
     }
 
+    public ResponseEntity<ListOfSubjects> getSubjectList(String auth) {
+        String token = jwtService.extractTokenFromHeader(auth);
+        String id = jwtService.getId(token);
+        var app = applicationUserService.findUser(id).get();
+        Set<Subject> subjects= subjectService.findAllByLecuturerInCharge(app);
+        ListOfSubjects listOfSubjects = ListOfSubjects.builder()
+                .lecturerID(id)
+                .lecturerName(app.getLastname()+" "+app.getFirstname())
+                .data(
+                      subjects.stream().map(subject -> ListOfSubjects.MetaData.builder()
+                              .subjectId(subject.getSubjectCode())
+                              .subjectTitle(subject.getSubjectTitle())
+                              .build()
+                      ).toList()
+                ).build();
+        return ResponseEntity.ok(listOfSubjects);
+    }
 }

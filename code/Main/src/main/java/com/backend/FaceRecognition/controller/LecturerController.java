@@ -32,8 +32,11 @@ public class LecturerController {
     }
     @GetMapping
     public ResponseEntity<SubjectResponse> getSubject(@RequestParam String subjectCode,@RequestHeader("Authorization") String bearer) {
-//        System.out.println("Vaxx");
         return lecturerService.getSubject(subjectCode,bearer);
+    }
+    @GetMapping("/mySubjects")
+    public ResponseEntity<ListOfSubjects> getSubjects(@RequestHeader("Authorization") String auth){
+        return lecturerService.getSubjectList(auth);
     }
     @PostMapping("/initialize")
     public ResponseEntity<Response> initializeAttendance(
