@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<AnchorPane fx:id="page" prefHeight="448.0" prefWidth="300.0" stylesheets="@login.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.clientSide.fxmlController.AttendanceController">
+   <children>
+      <Button layoutX="100.0" layoutY="344.0" mnemonicParsing="false" onAction="#markAttendance" prefHeight="35.0" prefWidth="181.0" text="Mark Attendance" />
+      <Label fx:id="statusMessage" layoutX="14.0" layoutY="387.0" prefHeight="43.0" prefWidth="273.0" text="Message:" />
+      <ImageView fx:id="imageView" fitHeight="310.0" fitWidth="270.0" layoutX="14.0" layoutY="14.0" pickOnBounds="true" preserveRatio="true" />
+   </children>
+</AnchorPane>

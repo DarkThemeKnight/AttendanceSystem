@@ -1,89 +1,140 @@
 #include <WiFiManager.h>
-#include <WiFi.h>
 #include <ESPAsyncWebServer.h>
-#include <AsyncTCP.h>
 #include <HTTPClient.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 
-// Server details
-const char* server_ip = "192.168.43.49";
-const int server_port = 8080;
-const char* api_endpoint = "/api/v1/update";
+// Define pin constants
+const int SERVER_ON_LED = 15;
+const int SERVER_INACTIVE_LED = 26;
+const int SERVER_RESET_BUTTON = 4;
+const int SERVER_RESET_LED = 13;
 
-// Access Point credentials
-const char* ap_ssid = "Teal studio ssid";
-const char* ap_password = "WoxncssOPs";
-
-// Global objects
+// Define WiFi and server objects
 WiFiManager wm;
 AsyncWebServer server(80);
 HTTPClient httpClient;
 
+// Static IP configuration
+IPAddress local_IP(192, 168, 1, 184); // Set your desired static IP address
+IPAddress gateway(192, 168, 1, 1);    // Set your network gateway
+IPAddress subnet(255, 255, 255, 0);   // Set your network subnet mask
+IPAddress primaryDNS(8, 8, 8, 8);     // Optional: Set your primary DNS
+IPAddress secondaryDNS(8, 8, 4, 4);   // Optional: Set your secondary DNS
+
+// Initialize LCD
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Change the address 0x27 to match your LCD module
+
+// Function to turn on server indication LEDs
+void serverOnSetup() {
+  digitalWrite(SERVER_ON_LED, HIGH);
+  digitalWrite(SERVER_INACTIVE_LED, LOW);
+}
+
+// Function to turn off server indication LEDs
+void serverOffSetup() {
+  digitalWrite(SERVER_ON_LED, LOW);
+  digitalWrite(SERVER_INACTIVE_LED, HIGH);
+}
+
+// Function to handle WiFi configuration
 void setupWifiConfigurer() {
-  Serial.println("Setting up Wifi Configurer");
-  bool res = wm.autoConnect("attendance_manager");
-  if (!res) {
-    Serial.println("Failed to connect");
+  serverOffSetup();
+  if (!wm.autoConnect("attendance_manager")) {
+    Serial.println("Failed to connect and hit timeout");
+    serverOffSetup();
     ESP.restart();
   } else {
-    Serial.println("Connected...yeey :)");
+    Serial.print("Local IP: ");
+    Serial.println(WiFi.localIP());
+    serverOnSetup();
   }
 }
 
-void handleFileUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-  static String fileContent; // Holds the complete file content
-  if (!index) {
-    Serial.printf("Upload Start: %s\n", filename.c_str());
-    fileContent = ""; // Clear the file content at the start of a new file upload
-  }
-  // Append the new chunk of data to fileContent
-  for (size_t i = 0; i < len; i++) {
-    fileContent += (char)data[i];
-  }
-  if (final) {
-    Serial.printf("Upload End: %s, %u B\n", filename.c_str(), index + len);    
-    // Forward the received file to the remote server
-    if (WiFi.status() == WL_CONNECTED) {
-      String serverPath = String("http://") + server_ip + ":" + String(server_port) + api_endpoint;
-      httpClient.begin(serverPath);
-      httpClient.addHeader("Content-Type", "application/octet-stream");
-      int httpResponseCode = httpClient.POST((uint8_t*)fileContent.c_str(), fileContent.length());
-      if (httpResponseCode > 0) {
-        String response = httpClient.getString();
-        Serial.printf("HTTP Response code: %d\n", httpResponseCode);
-        Serial.println("Response: " + response);
-      } else {
-        Serial.printf("Error on HTTP request: %s\n", httpClient.errorToString(httpResponseCode).c_str());
-      }
-      httpClient.end();
-    }
+// Function to handle button press for WiFi configuration
+void handleResetButton() {
+  int isResetButtonPressed = digitalRead(SERVER_RESET_BUTTON);
+  if (isResetButtonPressed == HIGH) {
+    digitalWrite(SERVER_INACTIVE_LED, LOW);
+    digitalWrite(SERVER_RESET_LED, HIGH);
+    setupWifiConfigurer();
+    digitalWrite(SERVER_RESET_LED, LOW);
   }
 }
 
 void setup() {
   Serial.begin(115200);
-  pinMode(1, INPUT);
 
-  // Start Wi-Fi as both client and access point
-  WiFi.softAP(ap_ssid, ap_password);
+  // Initialize pins
+  pinMode(SERVER_ON_LED, OUTPUT);
+  pinMode(SERVER_INACTIVE_LED, OUTPUT);
+  pinMode(SERVER_RESET_LED, OUTPUT);
+  pinMode(SERVER_RESET_BUTTON, INPUT);
+
+  // Set initial LED states
+  digitalWrite(SERVER_ON_LED, LOW);
+  digitalWrite(SERVER_INACTIVE_LED, LOW);
+  digitalWrite(SERVER_RESET_LED, LOW);
+
+  // Initialize LCD
+  lcd.init();
+  lcd.backlight();
+
+  // Start WiFi Access Point
+  WiFi.softAP("Teal studio", "WoxncssOPs");
   Serial.print("AP IP address: ");
   Serial.println(WiFi.softAPIP());
 
-  // Configure and start the web server
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/html", "<h1>Hello from ESP32</h1><form method='POST' action='/upload' enctype='multipart/form-data'><input type='file' name='file'><input type='submit' value='Upload'></form>");
+  // Set static IP address
+  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
+    Serial.println("STA Failed to configure");
+  }
+
+  // Auto-connect to WiFi
+  setupWifiConfigurer();
+
+  // Define status endpoint
+  server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "application/json", "{\"status\":\"Server is running\"}");
   });
 
-  server.onFileUpload(handleFileUpload);
+  // Define upload endpoint
+  server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("imageUpload", true)) {
+      AsyncWebParameter* p = request->getParam("imageUpload", true);
+      const String& filename = p->value();
+      Serial.printf("Upload Start: %s\n", filename.c_str());
 
+      if (WiFi.status() == WL_CONNECTED) {
+        String serverPath = "http://192.168.43.49:8080/api/v1/update";
+        httpClient.begin(serverPath);
+        httpClient.addHeader("Content-Type", "application/octet-stream");
+        int httpResponseCode = httpClient.POST((uint8_t*)filename.c_str(), filename.length());
+        if (httpResponseCode > 0) {
+          String response = httpClient.getString();
+          Serial.printf("HTTP Response code: %d\n", httpResponseCode);
+          Serial.println("Response: " + response);
+        } else {
+          Serial.printf("Error on HTTP request: %s\n", httpClient.errorToString(httpResponseCode).c_str());
+        }
+        httpClient.end();
+      }
+    }
+    request->send(200, "text/plain", "Upload complete");
+  });
+
+  // Start the server
   server.begin();
-  Serial.println("Async Web Server started");
-
-  setupWifiConfigurer();
 }
 
 void loop() {
-  int val = digitalRead(1);
-  if (val == 1) {
-    setupWifiConfigurer();
-  }
+  handleResetButton();
+  delay(1000);
+
+  // Display IP address on LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("IP Address:");
+  lcd.setCursor(0, 1);
+  lcd.print(WiFi.localIP().toString());
 }

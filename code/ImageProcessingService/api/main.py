@@ -8,14 +8,14 @@ from typing import List
 from pydantic import BaseModel
 import requests
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel                          
 import numpy as np
 
 class EncodedImage(BaseModel):
     message: str
-    encoded_image: List[float]  # Representing the data as a list of floats (doubles in Java)
+    encoded_image: List[float]
 
-
+# jwt_token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmYWNlX3JlY29nbml0aW9uX2F1dGhlbnRpY2F0aW9uIiwiaWF0IjoxNzE4ODAyMjkxLCJleHAiOjIzNDk5NTQyOTF9.UoVc6ir8xs98jrPeS46La4YsqrNeJN5HUIoDHDMJ8G8"
 app = FastAPI()
 
 @app.post("/api/v1/image-processing")
@@ -40,21 +40,19 @@ class FaceRecognitionRequest(BaseModel):
     encodings : list
 
 @app.post("/api/v1/recognize")
-async def recognize_face(authorization: str = Header(None), subject_id: str = Query(..., title="Subject Id"), file: UploadFile = File(...)):
+async def recognize_face(subject_id: str = Query(..., title="Subject Id"), file: UploadFile = File(...)):
     try:
-         # Log request information
+        # Log request information
         print(f"Recognize face request received for subject ID: {subject_id}")
-
-        # Securely handle authorization
-        header = {"Authorization": authorization}
-
+        
         # Send request to the endpoint to get student encodings for this subject id
-        response = requests.get("http://localhost:8080/api/v1/encodings?code=" + subject_id, headers=header)
+        response = requests.get("http://localhost:8080/api/v1/encodings?code=" + subject_id)
         response.raise_for_status()  # Raise HTTPError for bad status codes
+        
         val = response.json()
         matriculation_numbers = val.get("matriculation_numbers", [])
         encodings = val.get("encodings", [])
-
+        print(f"matriculation_numbers => {matriculation_numbers} ")
         image = ip.process_image(file)
         image = cv2.resize(image, (265, 240))
         img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)

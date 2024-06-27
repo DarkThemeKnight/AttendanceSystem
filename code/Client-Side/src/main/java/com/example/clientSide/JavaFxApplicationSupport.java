@@ -1,48 +1,39 @@
-//package com.example.clientSide;
-//
-//
-//import com.example.clientSide.service.AuthenticationService;
-//import com.example.clientSide.service.ProfilePictureService;
-//import com.example.clientSide.state.ApplicationContext;
-//import com.example.clientSide.utils.AuthenticationRequest;
-//import com.google.common.io.Files;
-//import javafx.application.Platform;
-//import javafx.fxml.FXMLLoader;
-//import javafx.scene.Parent;
-//import javafx.scene.Scene;
-//import javafx.stage.Stage;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.boot.WebApplicationType;
-//import org.springframework.boot.autoconfigure.SpringBootApplication;
-//import org.springframework.boot.builder.SpringApplicationBuilder;
-//import org.springframework.core.io.ByteArrayResource;
-//import org.springframework.web.multipart.MultipartFile;
-//import org.springframework.web.multipart.support.StandardMultipartHttpServletRequest;
-//
-//import javax.imageio.ImageIO;
-//import java.awt.image.BufferedImage;
-//import java.io.ByteArrayOutputStream;
-//import java.io.File;
-//import java.net.URL;
-//
-//@SpringBootApplication
-//@Slf4j
-//public class JavaFxApplicationSupport extends javafx.application.Application {
-//  @Override
-//  public void init() throws Exception {
-//    SpringApplicationBuilder builder = new
-//            SpringApplicationBuilder(JavaFxApplicationSupport.class);
-//    builder.application().setWebApplicationType(WebApplicationType.NONE);
-//  }
-//  @Override
-//  public void start(Stage primaryStage) throws Exception {
-//
-//
-//  }
-//
-//
-//  public static void main(String[] args) {
-//    launch(args);
-//  }
-//
-//}
+package com.example.clientSide;
+
+
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+import lombok.extern.slf4j.Slf4j;
+import org.opencv.core.Core;
+import org.opencv.core.MatOfRect;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+@SpringBootApplication
+@Slf4j
+public class JavaFxApplicationSupport extends javafx.application.Application {
+  static {
+    System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+  }
+  @Override
+  public void init() throws Exception {
+    SpringApplicationBuilder builder = new
+            SpringApplicationBuilder(JavaFxApplicationSupport.class);
+    builder.application().setWebApplicationType(WebApplicationType.NONE);
+  }
+  @Override
+  public void start(Stage primaryStage) throws Exception {
+    FXMLLoader loader = new FXMLLoader(getClass().getResource("/static/MarkAttendancePage.fxml"));
+    Parent root = loader.load();
+    Scene scene = new Scene(root);
+    primaryStage.setTitle("Login Page");
+    primaryStage.setScene(scene);
+    primaryStage.show();
+  }
+  public static void main(String[] args) {
+    launch(args);
+  }
+
+}
