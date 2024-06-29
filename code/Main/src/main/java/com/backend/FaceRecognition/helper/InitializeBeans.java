@@ -93,6 +93,7 @@ public class InitializeBeans {
                 .userRole(Set.of(Role.ROLE_LECTURER))
                 .firstname("demo_lecturer1")
                 .lastname("demoSurname")
+                .schoolEmail("demo_email")
                 .password(passwordEncoder.encode("DEMOSURNAME"))
                 .isAccountNonExpired(true)
                 .isEnabled(true)

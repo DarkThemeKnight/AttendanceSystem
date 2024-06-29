@@ -10,6 +10,7 @@ import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
 import com.backend.FaceRecognition.utils.*;
+import com.backend.FaceRecognition.utils.history.AttendanceRecordHistoryResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -115,7 +117,6 @@ public class AttendanceService {
         if (!attendances.isEmpty()) {
             return ResponseEntity.badRequest().body("attendance already initialized");
         }
-        log.info("Duration => {}",duration);
         if (duration < 10) {
             return ResponseEntity.badRequest().body("Duration at least 10 minutes");
         }
@@ -130,7 +131,6 @@ public class AttendanceService {
             return new ResponseEntity<>("Unauthorized to take attendance", HttpStatus.UNAUTHORIZED);
         }
         Set<Student> allPossibleAttendees = new HashSet<>(studentService.getAllStudentsOfferingCourse2(subjectCode));
-        log.info("Size => "+allPossibleAttendees.size());
         List<Attendance> studentAttendance = allPossibleAttendees.stream()
                 .map(student -> new Attendance(student.getMatriculationNumber(),
                         subject.getSubjectCode(),
@@ -404,6 +404,58 @@ public class AttendanceService {
         }
         return ResponseEntity.ok(attendances);
     }
+    public ResponseEntity<AttendanceRecordHistoryResponse> getHistoryRecord(String subjectCode, String bearer){
+        Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
+        if (subjectOptional.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        Subject subject = subjectOptional.get();
+        String jwtToken = jwtService.extractTokenFromHeader(bearer);
+        String id = jwtService.getId(jwtToken);
+        if (subjectOptional.get().getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        var data= attendanceRepository.findByStudentId(subject.getSubjectCode());
+        final Map<String,Double> userScore = new HashMap<>();
+        int total = 0;
+        try {
+            total = Objects.requireNonNull(getRecord(subjectCode, bearer).getBody()).getData().size();
+        }catch (Exception e){
+            return ResponseEntity.notFound().build();
+        }
+        data.forEach(
+                attendance -> {
+                    userScore.computeIfPresent(
+                            attendance.getStudentId(),(k,v) -> attendance.getStatus().equals(AttendanceStatus.PRESENT)?v+1.0:v+0.0
+                    );
+                    userScore.putIfAbsent(attendance.getStudentId(), attendance.getStatus().equals(AttendanceStatus.PRESENT)?1.0:0.0);
+                }
+        );
+        final int totalFinal = total;
+        var keys =userScore.keySet();
+        keys.forEach(key -> {
+            userScore.compute(key, (k,v)-> v!=null? (100.0 * v) /totalFinal : 0);
+        });
+        List<AttendanceRecordHistoryResponse.MetaData> metaDataList = new ArrayList<>();
+        for (Map.Entry<String,Double> entry: userScore.entrySet()) {
+            Student student = studentService.getStudentById(entry.getKey()).get();
+            AttendanceRecordHistoryResponse.MetaData  metaData = AttendanceRecordHistoryResponse.MetaData.builder()
+                    .firstname(student.getFirstname())
+                    .lastname(student.getLastname())
+                    .matriculationNumber(student.getMatriculationNumber())
+                    .percentageAttendanceScore(String.format("%.2f",entry.getValue())+"%")
+                    .isEligibleForExam(entry.getValue()-70.0 > 0.0001 ?"YES":"NO")
+                    .build();
+            metaDataList.add(metaData);
+        }
+        AttendanceRecordHistoryResponse generateHistory = AttendanceRecordHistoryResponse.builder()
+                .title(subject.getSubjectTitle())
+                .subjectCode(subject.getSubjectCode())
+                .attendanceData(
+                        metaDataList
+                ).build();
+        return ResponseEntity.ok(generateHistory);
+    }
     public ResponseEntity<AvailableRecords> getRecord(String subjectCode, String bearer) {
         Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
         if (subjectOptional.isEmpty()) {
@@ -415,9 +467,19 @@ public class AttendanceService {
         if (subjectOptional.get().getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)) {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
-        List<AttendanceSetupPolicy> attendanceSetupPolicyList = attendanceSetupRepository.findAllBySubjectId(subjectCode);
+        List<AttendanceSetupPolicy> attendanceSetupPolicyList = attendanceSetupRepository
+                .findAllBySubjectId(subjectCode);
+
         Set<AvailableRecords.Data> set = attendanceSetupPolicyList.stream()
-                .map(ob -> new AvailableRecords.Data(ob.getAttendanceDate().toString())).collect(Collectors.toSet());
+                .map(ob -> new AvailableRecords.Data(ob.getAttendanceDate().toString()))
+                .collect(Collectors.toSet());
+
+        List<AvailableRecords.Data> sortedList = set.stream()
+                .sorted(Comparator.comparing(data -> LocalDate.parse(data.getDate())))
+                .toList();
+
+        set = new HashSet<>(sortedList);
+
         return ResponseEntity.ok(new AvailableRecords(set));
     }
 

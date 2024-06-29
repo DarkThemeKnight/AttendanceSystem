@@ -4,6 +4,7 @@ import com.backend.FaceRecognition.services.attendance_service.AttendanceService
 
 import com.backend.FaceRecognition.services.authorization_service.lecturer_service.LecturerService;
 import com.backend.FaceRecognition.utils.*;
+import com.backend.FaceRecognition.utils.history.AttendanceRecordHistoryResponse;
 import com.backend.FaceRecognition.utils.student.StudentRequest;
 import com.backend.FaceRecognition.utils.subject.SubjectResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -61,6 +62,17 @@ public class LecturerController {
         try {
             LocalDate localDate = LocalDate.parse(date);
             return attendanceService.getRecord(subjectCode, localDate, id, bearer);
+        }catch (DateTimeParseException e){
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    @GetMapping("/record-history")
+    public ResponseEntity<AttendanceRecordHistoryResponse> getRecordHistory(
+            @RequestParam String subjectCode,
+            @RequestHeader("Authorization") String bearer
+    ) {
+        try {
+            return attendanceService.getHistoryRecord(subjectCode, bearer);
         }catch (DateTimeParseException e){
             return ResponseEntity.badRequest().build();
         }
