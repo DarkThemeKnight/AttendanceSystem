@@ -17,6 +17,7 @@ import com.google.common.io.Files;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ByteArrayResource;
@@ -40,6 +41,8 @@ public class InitializeBeans {
     private final StudentService studentService;
     private final SubjectService subjectService;
     private final AuthenticationService authenticationService;
+    @Value("${spring.jpa.hibernate.ddl-auto}")
+    private String type;
 
     private void setupSuperAdmin() {
         log.info("Setting up Super Admin...");
@@ -199,13 +202,16 @@ public class InitializeBeans {
     @Bean
     public CommandLineRunner setupApplication() {
         return args -> {
-            log.info("Setting up application...");
-            setupAdmin();
-            setupLecturer();
-            setupSuperAdmin();
-            mockDB();
-            log.info("Application setup complete.");
+            if (type.equals("create-drop")) {
+                log.info("Setting up application...");
+                setupAdmin();
+                setupLecturer();
+                setupSuperAdmin();
+                mockDB();
+                log.info("Application setup complete.");
+            }
         };
+
     }
 
     @Bean
