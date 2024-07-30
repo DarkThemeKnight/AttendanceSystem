@@ -40,14 +40,13 @@ public class LecturerController {
         return lecturerService.getSubjectList(auth);
     }
     @PostMapping("/initialize")
-    public ResponseEntity<Response> initializeAttendance(
+    public ResponseEntity<InitializeAttendanceResponse> initializeAttendance(
             @RequestBody InitializeAttendance initializeAttendance,
             HttpServletRequest request) {
         System.out.println(initializeAttendance);
         try {
-            var r = attendanceService.initializeAttendance(initializeAttendance.getSubjectCode(),
+            return attendanceService.initializeAttendance(initializeAttendance.getSubjectCode(),
                     request.getHeader("Authorization"), initializeAttendance.getDuration());
-            return new ResponseEntity<>(new Response(r.getBody()), r.getStatusCode());
         }catch (Exception e){
             return ResponseEntity.internalServerError().build();
         }

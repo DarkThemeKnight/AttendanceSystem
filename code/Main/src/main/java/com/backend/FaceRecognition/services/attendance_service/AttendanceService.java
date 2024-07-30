@@ -60,24 +60,43 @@ public class AttendanceService {
         this.studentService = studentService;
         this.suspensionRepository = suspensionRepository;
     }
-    public ResponseEntity<String> initializeAttendance(String subjectCode, String authorization, int duration) {
-        List<Attendance> attendances = attendanceRepository.findBySubjectIdAndDate(subjectCode, LocalDate.now());
-        if (!attendances.isEmpty()) {
-            return ResponseEntity.badRequest().body("attendance already initialized");
+    public ResponseEntity<InitializeAttendanceResponse> initializeAttendance(String subjectCode, String authorization, int duration) {
+        Optional<AttendanceSetupPolicy> setupPolicy = attendanceSetupRepository.findBySubjectIdAndAttendanceDate(subjectCode,LocalDate.now());
+        if (setupPolicy.isPresent()) {
+            return ResponseEntity.badRequest().body(
+                    InitializeAttendanceResponse.builder()
+                            .status("FAILED")
+                            .message("attendance already initialized TODAY!")
+                            .metaData(InitializeAttendanceResponse.Metadata.builder()
+                                    .subjectId(setupPolicy.get().getSubjectId())
+                                    .attendanceCode(setupPolicy.get().getCode())
+                                    .totalDurationInMinutes(setupPolicy.get().getDuration()+"")
+                                    .build())
+                            .build());
         }
         log.info("Duration => {}",duration);
         if (duration < 10) {
-            return ResponseEntity.badRequest().body("Duration at least 10 minutes");
+            return ResponseEntity.badRequest().body(
+                    InitializeAttendanceResponse.builder()
+                            .status("FAILED")
+                            .message("Duration at least 10 minutes")
+                            .build());
         }
         String jwtToken = jwtService.extractTokenFromHeader(authorization);
         String id = jwtService.getId(jwtToken);
         Optional<Subject> subjectOptional = subjectService.findSubjectByCode(subjectCode);
         if (subjectOptional.isEmpty()) {
-            return new ResponseEntity<>("Subject not found", HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(InitializeAttendanceResponse.builder()
+                    .status("FAILED")
+                    .message("Subject not found")
+                    .build(),HttpStatus.NOT_FOUND);
         }
         Subject subject = subjectOptional.get();
         if (subject.getLecturerInCharge() == null || !subject.getLecturerInCharge().getId().equals(id)) {
-            return new ResponseEntity<>("Unauthorized to take attendance", HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>(InitializeAttendanceResponse.builder()
+                    .status("FAILED")
+                    .message("Unauthorized to take attendance")
+                    .build(),HttpStatus.UNAUTHORIZED);
         }
         Set<Student> allPossibleAttendees = studentService.getAllStudentsOfferingCourse(subjectCode);
         LocalDate localDate = LocalDate.now();
@@ -97,7 +116,17 @@ public class AttendanceService {
                 .build();
         setup = attendanceSetupRepository.save(setup);
         attendanceRepository.saveAll(studentAttendance);
-        return new ResponseEntity<>("code="+setup.getCode(), HttpStatus.OK);
+        return new ResponseEntity<>(InitializeAttendanceResponse.builder()
+                .status("SUCCESS")
+                .message("Initialized attendance successfully")
+                .metaData(InitializeAttendanceResponse.Metadata.builder()
+                        .subjectId(setup.getSubjectId())
+                        .attendanceCode(setup.getCode())
+                        .creationDateTime(LocalDateTime.now().toString())
+                        .expiryDateTime(LocalDateTime.now().plusMinutes(setup.getDuration()).toString())
+                        .totalDurationInMinutes(String.valueOf(setup.getDuration()))
+                        .build())
+                .build(),HttpStatus.UNAUTHORIZED);
     }
     public ResponseEntity<String> initializeAttendance(String subjectCode, String authorization, int duration, LocalDate date) {
         List<Attendance> attendances = attendanceRepository.findBySubjectIdAndDate(subjectCode, date);
