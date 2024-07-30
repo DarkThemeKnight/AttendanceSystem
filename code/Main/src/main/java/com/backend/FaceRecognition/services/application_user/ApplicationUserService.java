@@ -6,11 +6,11 @@ import com.backend.FaceRecognition.utils.ResetPassword;
 import com.backend.FaceRecognition.utils.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -18,74 +18,56 @@ import java.util.Optional;
 @Slf4j
 @RequiredArgsConstructor
 public class ApplicationUserService {
-
     private final ApplicationUserRepository applicationUserRepository;
     private final PasswordEncoder encoder;
 
-    public Optional<ApplicationUser> findUser(String userId){
+    public Optional<ApplicationUser> findUser(String userId) {
+        log.info("Finding user with ID: {}", userId);
         return applicationUserRepository.findById(userId);
     }
-    public java.util.List<ApplicationUser> findAllUsers(){
+
+    public java.util.List<ApplicationUser> findAllUsers() {
+        log.info("Finding all users");
         return applicationUserRepository.findAll();
     }
-    /**
-     * Creates a new application user.
-     * This method attempts to create a new application user in the system.
-     * It checks if the user already exists
-     * based on the provided user ID. If the user already exists, a conflict status is returned.
-     * If the user doesn't exist, it is saved to the repository,
-     * and a success status is returned.
-     *
-     * @param applicationUser The ApplicationUser object representing the user to be created.
-     * @return A ResponseEntity indicating the result of the operation.
-     *         If the user already exists, a conflict status is returned.
-     *         If the user is successfully created, an OK status is returned.
-     */
+
+    @Transactional
     public ResponseEntity<Void> create(ApplicationUser applicationUser) {
-        // Check if the user already exists
+        log.info("Creating user with ID: {}", applicationUser.getId());
         Optional<ApplicationUser> userOptional = applicationUserRepository.findById(applicationUser.getId());
         if (userOptional.isPresent()) {
-            // User already exists, return conflict status
+            log.warn("User with ID: {} already exists", applicationUser.getId());
             return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
-        // User doesn't exist, save it to the repository
         applicationUserRepository.save(applicationUser);
-
-        // Return success status
-        return new ResponseEntity<>(HttpStatus.OK);
+        log.info("User with ID: {} created successfully", applicationUser.getId());
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
-
-    /**
-     * Updates an existing application user.
-     * This method attempts to update an existing application user in the system based on the provided user ID.
-     * If the user exists, it updates the user in the repository.
-     * If the user doesn't exist, a not found status
-     * is returned.
-     *
-     * @param appUser The ApplicationUser object representing the user to be updated.
-     */
-    public void update(ApplicationUser appUser) {
-        // Check if the user exists
+    @Transactional
+    public ResponseEntity<Void> update(ApplicationUser appUser) {
+        log.info("Updating user with ID: {}", appUser.getId());
         Optional<ApplicationUser> user = applicationUserRepository.findById(appUser.getId());
         if (user.isPresent()) {
-            // User exists, update it in the repository
             applicationUserRepository.save(appUser);
-            // Return success status
-            new ResponseEntity<>(HttpStatus.OK);
-            return;
+            log.info("User with ID: {} updated successfully", appUser.getId());
+            return new ResponseEntity<>(HttpStatus.OK);
         }
-        // User doesn't exist, return not found status
-        new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        log.warn("User with ID: {} not found", appUser.getId());
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
+
+    @Transactional
     public ResponseEntity<Response> resetPassword(String userId, ResetPassword resetPassword) {
+        log.info("Resetting password for user with ID: {}", userId);
         ApplicationUser applicationUser = applicationUserRepository.findById(userId).orElse(null);
-        if (applicationUser == null){
+        if (applicationUser == null) {
+            log.warn("User with ID: {} not found", userId);
             return ResponseEntity.notFound().build();
         }
         applicationUser.setPassword(encoder.encode(resetPassword.getNewPassword()));
         applicationUserRepository.save(applicationUser);
+        log.info("Password for user with ID: {} changed successfully", userId);
         return ResponseEntity.ok(new Response("Password changed successfully"));
     }
-
 }

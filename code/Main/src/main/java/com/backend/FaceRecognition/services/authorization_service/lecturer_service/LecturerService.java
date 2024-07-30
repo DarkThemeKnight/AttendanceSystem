@@ -77,11 +77,16 @@ public class LecturerService {
                 .getAllStudentsOfferingCourse(subject.getSubjectCode());
         Set<SubjectResponse.Metadata> matriculationNum = students.
                 stream()
-                .map(v -> SubjectResponse.Metadata.builder()
-                        .studentId(v.getMatriculationNumber())
-                        .firstname(v.getFirstname())
-                        .lastname(v.getLastname())
-                        .build()
+                .map(v -> {
+                    SubjectResponse.Metadata subjectResponseMetadata = SubjectResponse.Metadata.builder()
+                                    .studentId(v.getMatriculationNumber())
+                                    .firstname(v.getFirstname())
+                                    .lastname(v.getLastname())
+                                    .build();
+                    Optional<Suspension> suspension = suspensionRepository.findByStudentIdAndSubjectId(v.getMatriculationNumber(),subject.getSubjectCode());
+                    subjectResponseMetadata.setSuspended(suspension.isPresent());
+                    return subjectResponseMetadata;
+                        }
                 ).collect(Collectors.toSet());
         response.setStudents(matriculationNum);
         response.setMessage("Fetched Successfully");

@@ -24,14 +24,12 @@ import java.util.function.Function;
 @Slf4j
 @Service
 public class JwtService {
-        @Value("${token}")
-        private String tokenSecretKey;
-        private final ResetPasswordTokenSaltRepository resetPasswordTokenSaltRepository;
-
+    @Value("${token}")
+    private String tokenSecretKey;
+    private final ResetPasswordTokenSaltRepository resetPasswordTokenSaltRepository;
     public JwtService(ResetPasswordTokenSaltRepository resetPasswordTokenSaltRepository) {
         this.resetPasswordTokenSaltRepository = resetPasswordTokenSaltRepository;
     }
-
     public String extractTokenFromHeader(String authorizationHeader) {
             if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
                 return authorizationHeader.substring(7); // Extract the token excluding "Bearer "

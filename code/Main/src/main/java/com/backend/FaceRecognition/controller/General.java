@@ -28,6 +28,7 @@ public class General {
     private final ApplicationUserService applicationUserService;
     private final Utility utility;
 
+
     public General(StudentService studentService, NotificationRepository notificationRepository, ScheduleService scheduleService,
                    JwtService jwtService, ApplicationUserService applicationUserService, Utility utility) {
         this.studentService = studentService;

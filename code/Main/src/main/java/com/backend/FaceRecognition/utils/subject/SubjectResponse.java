@@ -32,6 +32,7 @@ public class SubjectResponse {
         String studentId;
         String firstname;
         String lastname;
+        boolean isSuspended;
     }
     public SubjectResponse(String message) {
         this.message = message;

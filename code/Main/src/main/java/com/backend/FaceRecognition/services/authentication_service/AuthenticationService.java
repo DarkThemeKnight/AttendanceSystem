@@ -159,7 +159,10 @@ public class AuthenticationService {
             }
             if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 user.setCredentialsNonExpired(true);
-                applicationUserService.update(user);
+                ResponseEntity<Void> response = applicationUserService.update(user);
+                if (!response.getStatusCode().is2xxSuccessful()){
+                    return ResponseEntity.badRequest().body(new AuthenticationResponse("User not found",null,null));
+                }
                 Date expiry = JwtService.getDate(1,'H');
                 LocalDateTime localDateTime = LocalDateTime.now().plusHours(1);
                 String token = jwtService.generate(new HashMap<>(),user,expiry);

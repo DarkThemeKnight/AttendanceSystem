@@ -37,10 +37,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
-/**
- * Service class for managing attendance-related operations.
- */
 @Service
 @Slf4j
 public class AttendanceService {
@@ -63,15 +59,6 @@ public class AttendanceService {
         this.jwtService = jwtService;
         this.studentService = studentService;
         this.suspensionRepository = suspensionRepository;
-    }
-    @Scheduled(fixedRate = 5 * 60 * 60 * 1000) // 5 hours in milliseconds
-    public void clear() {
-        log.info("clearing previous attendance policies");
-        List<AttendanceSetupPolicy> attendanceSetupPolicyList = attendanceSetupRepository.findAll();
-        attendanceSetupPolicyList = attendanceSetupPolicyList.stream()
-                .filter(v -> v.getAttendanceDateTime().plusMinutes(v.getDuration()).isBefore(LocalDateTime.now()))
-                .collect(Collectors.toList());
-        attendanceSetupRepository.deleteAll(attendanceSetupPolicyList);
     }
     public ResponseEntity<String> initializeAttendance(String subjectCode, String authorization, int duration) {
         List<Attendance> attendances = attendanceRepository.findBySubjectIdAndDate(subjectCode, LocalDate.now());
@@ -325,7 +312,6 @@ public class AttendanceService {
         );
         return attendanceRecordResponse;
     }
-
     public ResponseEntity<StudentAttendanceRecordResponse> viewAttendanceRecord(String bearer,String code) {
         ResponseEntity<List<Attendance>> response = getStudentRecord(
                 jwtService.getId(jwtService.extractTokenFromHeader(bearer)));
@@ -352,7 +338,6 @@ public class AttendanceService {
         return ResponseEntity.ok(new StudentAttendanceRecordResponse(
                 attendanceList.get(0).getStudentId(), getDefault));
     }
-
     public ResponseEntity<ByteArrayResource> printAttendanceRecord(String bearer, String code) {
         ResponseEntity<StudentAttendanceRecordResponse> response = viewAttendanceRecord(bearer,code);
         if (response.getStatusCode() != HttpStatus.OK) {
@@ -363,7 +348,6 @@ public class AttendanceService {
         }
         return buildExcel(response.getBody());
     }
-
     private ResponseEntity<ByteArrayResource> buildExcel(StudentAttendanceRecordResponse body) {
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Attendance Record");
@@ -396,7 +380,6 @@ public class AttendanceService {
         headers.setContentDispositionFormData("filename", "attendance_record.xlsx");
         return new ResponseEntity<>(new ByteArrayResource(outputStream.toByteArray()), headers, HttpStatus.OK);
     }
-
     public ResponseEntity<List<Attendance>> getStudentRecord(String studentId) {
         List<Attendance> attendances = attendanceRepository.findByStudentId(studentId);
         if (attendances == null || attendances.isEmpty()) {
@@ -482,5 +465,4 @@ public class AttendanceService {
 
         return ResponseEntity.ok(new AvailableRecords(set));
     }
-
 }

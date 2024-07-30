@@ -3,8 +3,10 @@ package com.backend.FaceRecognition.helper;
 import com.backend.FaceRecognition.constants.AttendanceStatus;
 import com.backend.FaceRecognition.constants.Role;
 import com.backend.FaceRecognition.entities.ApplicationUser;
+import com.backend.FaceRecognition.entities.Notification;
 import com.backend.FaceRecognition.entities.Student;
 import com.backend.FaceRecognition.entities.Subject;
+import com.backend.FaceRecognition.repository.NotificationRepository;
 import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
 import com.backend.FaceRecognition.services.attendance_service.AttendanceService;
 import com.backend.FaceRecognition.services.authentication_service.AuthenticationService;
@@ -40,10 +42,18 @@ public class InitializeBeans {
     private final LecturerService lecturerService;
     private final StudentService studentService;
     private final SubjectService subjectService;
+    private final NotificationRepository notificationRepository;
+
     private final AuthenticationService authenticationService;
     @Value("${spring.jpa.hibernate.ddl-auto}")
     private String type;
-
+    private void setNotifications(){
+        Notification notification = new Notification();
+        notification.setValidUntil(LocalDate.now().plusDays(3));
+        notification.setTitle("Welcome");
+        notification.setContent("You are welcome to the attendance management system");
+        notificationRepository.save(notification);
+    }
     private void setupSuperAdmin() {
         log.info("Setting up Super Admin...");
         ApplicationUser user = new ApplicationUser(
@@ -189,7 +199,7 @@ public class InitializeBeans {
                     Collections.shuffle(savedStudents);
                     List<Student> sublist = savedStudents.subList(0, size);
                     sublist.forEach(v -> {
-                        attendanceService.updateAttendanceStatus(code, v.getMatriculationNumber(), AttendanceStatus.PRESENT);
+                        var result =attendanceService.updateAttendanceStatus(code, v.getMatriculationNumber(), AttendanceStatus.PRESENT);
                     });
                     log.info("Attendance initialized for date => {}", randomDate);
                 } else {
@@ -209,6 +219,7 @@ public class InitializeBeans {
                 setupLecturer();
                 setupSuperAdmin();
                 mockDB();
+                setNotifications();
                 log.info("Application setup complete.");
             }
         };
