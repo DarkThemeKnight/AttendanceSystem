@@ -76,14 +76,12 @@ public class LecturerController {
             return ResponseEntity.badRequest().build();
         }
     }
-
     @GetMapping("/available-records")
     public ResponseEntity<AvailableRecords> getAvailableRecord(
             @RequestParam String subjectCode,
             @RequestHeader("Authorization") String bearer) {
         return attendanceService.getRecord(subjectCode, bearer);
     }
-
     @PostMapping("/clear")
     public ResponseEntity<Response> clearSubjectStudents(@RequestParam String subjectCode,
             @RequestHeader("Authorization") String bearer) {

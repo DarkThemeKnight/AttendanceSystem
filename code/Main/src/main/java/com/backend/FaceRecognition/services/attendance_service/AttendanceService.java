@@ -177,8 +177,8 @@ public class AttendanceService {
         attendanceRepository.save(attendance);
         return ResponseEntity.ok(new ObjectMapper().writeValueAsString(new Response("Success")));
     }
-        public ResponseEntity<String> updateAttendanceStatus(String attendanceCode,
-                                                         MultipartFile multipartFile) {
+    public ResponseEntity<String> updateAttendanceStatus(String attendanceCode,
+                                                     MultipartFile multipartFile) {
         Optional<AttendanceSetupPolicy> attendanceSetup =
                 attendanceSetupRepository.findById(attendanceCode);
         if (attendanceSetup.isEmpty()) {
@@ -226,7 +226,7 @@ public class AttendanceService {
         return new ResponseEntity<>("Failed to mark attendance", HttpStatus.BAD_REQUEST);
         }
         return ResponseEntity.badRequest().build();
-}
+    }
 
     public ResponseEntity<AttendanceRecordResponse> getRecord(String subjectCode, LocalDate date, int sort,
             String bearer) {

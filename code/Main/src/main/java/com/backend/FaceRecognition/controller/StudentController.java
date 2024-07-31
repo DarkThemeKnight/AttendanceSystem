@@ -25,7 +25,6 @@ import java.util.Optional;
 public class StudentController {
     private final StudentService studentService;
     private final AttendanceService attendanceService;
-
     @PostMapping("/update")
     public ResponseEntity<Response> updateAttendanceStatus(
             @RequestParam String attendanceCode,

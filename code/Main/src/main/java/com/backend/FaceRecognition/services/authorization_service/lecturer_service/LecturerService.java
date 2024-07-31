@@ -112,7 +112,7 @@ public class LecturerService {
     public ResponseEntity<Response> suspendStudentFromMarkingAttendance(String auth,String subjectCode, String studentId,boolean suspend){
         Optional<Subject> optionalSubject = subjectService.findSubjectByCode(subjectCode);
         if (optionalSubject.isEmpty()) {
-            return new ResponseEntity<>(new Response("subject Not found"), HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(new Response("Subject Not found"), HttpStatus.NOT_FOUND);
         }
         if (cantPerformOperation(auth, optionalSubject.get())){
             return new ResponseEntity<>(new Response("Unauthorized"),HttpStatus.UNAUTHORIZED);
