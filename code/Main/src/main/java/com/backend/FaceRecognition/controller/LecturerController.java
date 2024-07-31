@@ -9,6 +9,7 @@ import com.backend.FaceRecognition.utils.student.StudentRequest;
 import com.backend.FaceRecognition.utils.subject.SubjectResponse;
 import jakarta.servlet.http.HttpServletRequest;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,7 @@ import java.time.format.DateTimeParseException;
 @CrossOrigin("*")
 @RequestMapping("api/v1/attendance")
 @Component
+@Slf4j
 public class LecturerController {
     private final AttendanceService attendanceService;
     private final LecturerService lecturerService;
@@ -36,7 +38,8 @@ public class LecturerController {
         return lecturerService.getSubject(subjectCode,bearer);
     }
     @GetMapping("/mySubjects")
-    public ResponseEntity<ListOfSubjects> getSubjects(@RequestHeader("Authorization") String auth){
+    public ResponseEntity<ListOfSubjects> getSubjects(@RequestHeader("Authorization") String auth) {
+        log.info("Received request to get subjects with authorization header: {}", auth);
         return lecturerService.getSubjectList(auth);
     }
     @PostMapping("/initialize")
@@ -97,13 +100,13 @@ public class LecturerController {
     private ResponseEntity<Response> build(ResponseEntity<String> response) {
         return new ResponseEntity<>(new Response(response.getBody()), response.getStatusCode());
     }
-
     @PostMapping("/suspend")
     public ResponseEntity<Response> suspendStudentFromMarkingAttendance(
             @RequestParam String subjectCode,
             @RequestParam String studentId,
             @RequestHeader("Authorization") String bearer,
             @RequestParam boolean suspend) {
+        log.info("Received request to suspend/restore student: {}, subject: {}, suspend: {}", studentId, subjectCode, suspend);
         return lecturerService.suspendStudentFromMarkingAttendance(bearer, subjectCode, studentId,suspend);
     }
     @GetMapping("/student-record")

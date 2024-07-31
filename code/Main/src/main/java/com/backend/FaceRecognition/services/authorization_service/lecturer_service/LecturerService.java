@@ -109,30 +109,41 @@ public class LecturerService {
         subjectService.save(subject);
         return new ResponseEntity<>("Cleared", HttpStatus.OK);
     }
-    public ResponseEntity<Response> suspendStudentFromMarkingAttendance(String auth,String subjectCode, String studentId,boolean suspend){
+
+    public ResponseEntity<Response> suspendStudentFromMarkingAttendance(String auth, String subjectCode, String studentId, boolean suspend) {
+        log.debug("Validating subject with code: {}", subjectCode);
         Optional<Subject> optionalSubject = subjectService.findSubjectByCode(subjectCode);
+
         if (optionalSubject.isEmpty()) {
+            log.warn("Subject with code: {} not found", subjectCode);
             return new ResponseEntity<>(new Response("Subject Not found"), HttpStatus.NOT_FOUND);
         }
-        if (cantPerformOperation(auth, optionalSubject.get())){
-            return new ResponseEntity<>(new Response("Unauthorized"),HttpStatus.UNAUTHORIZED);
+
+        if (cantPerformOperation(auth, optionalSubject.get())) {
+            log.warn("Unauthorized attempt to modify suspension for subject: {}", subjectCode);
+            return new ResponseEntity<>(new Response("Unauthorized"), HttpStatus.UNAUTHORIZED);
         }
+
         if (suspend) {
+            log.debug("Checking if student: {} is already suspended for subject: {}", studentId, subjectCode);
             if (suspensionRepository.findByStudentIdAndSubjectId(studentId, subjectCode).isPresent()) {
+                log.info("Student: {} already suspended for subject: {}", studentId, subjectCode);
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(new Response("Already suspended"));
             }
             Suspension suspension = new Suspension(null, studentId, subjectCode);
             suspensionRepository.save(suspension);
+            log.info("Student: {} suspended successfully for subject: {}", studentId, subjectCode);
             return ResponseEntity.ok(new Response("Suspended successfully"));
-        }
-        else {
+        } else {
+            log.debug("Checking if student: {} is currently suspended for subject: {}", studentId, subjectCode);
             var optional = suspensionRepository.findByStudentIdAndSubjectId(studentId, subjectCode);
             if (optional.isPresent()) {
                 suspensionRepository.delete(optional.get());
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(new Response("Restored"));
-            }
-            else {
-                return ResponseEntity.ok(new Response("Is not a Suspended Student"));
+                log.info("Suspension for student: {} in subject: {} has been restored", studentId, subjectCode);
+                return ResponseEntity.status(HttpStatus.OK).body(new Response("Restored"));
+            } else {
+                log.info("Student: {} is not suspended for subject: {}", studentId, subjectCode);
+                return new ResponseEntity<>(new Response("Is not a Suspended Student"),HttpStatus.CONFLICT);
             }
         }
     }
@@ -211,21 +222,35 @@ public class LecturerService {
         return new ResponseEntity<>(new Response("Student set successfully"), HttpStatus.OK);
     }
 
+
     public ResponseEntity<ListOfSubjects> getSubjectList(String auth) {
+        log.debug("Extracting token from authorization header");
         String token = jwtService.extractTokenFromHeader(auth);
+
+        log.debug("Extracting user ID from token");
         String id = jwtService.getId(token);
-        var app = applicationUserService.findUser(id).get();
-        Set<Subject> subjects= subjectService.findAllByLecuturerInCharge(app);
+
+        log.debug("Finding user by ID: {}", id);
+        var app = applicationUserService.findUser(id).orElse(null);
+        if (app == null) {
+            log.warn("User not found with ID: {}", id);
+            // You may want to return a suitable error response here
+        }
+
+        log.debug("Finding all subjects for lecturer: {}", app);
+        Set<Subject> subjects = subjectService.findAllByLecuturerInCharge(app);
+
+        log.debug("Building list of subjects for response");
         ListOfSubjects listOfSubjects = ListOfSubjects.builder()
                 .lecturerID(id)
-                .lecturerName(app.getLastname()+" "+app.getFirstname())
-                .data(
-                      subjects.stream().map(subject -> ListOfSubjects.MetaData.builder()
-                              .subjectId(subject.getSubjectCode())
-                              .subjectTitle(subject.getSubjectTitle())
-                              .build()
-                      ).toList()
-                ).build();
+                .lecturerName(app.getLastname() + " " + app.getFirstname())
+                .data(subjects.stream().map(subject -> ListOfSubjects.MetaData.builder()
+                        .subjectId(subject.getSubjectCode())
+                        .subjectTitle(subject.getSubjectTitle())
+                        .build()).toList())
+                .build();
+
+        log.info("Returning list of subjects for lecturer ID: {}", id);
         return ResponseEntity.ok(listOfSubjects);
     }
 }

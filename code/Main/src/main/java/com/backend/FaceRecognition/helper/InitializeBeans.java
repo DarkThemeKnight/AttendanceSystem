@@ -123,11 +123,20 @@ public class InitializeBeans {
                 .subjectTitle("Calculus I")
                 .build();
         subjectService.save(subject);
+
+        Subject subject2 = Subject.builder()
+                .subjectCode("MAT102")
+                .lecturerInCharge(applicationUserService.findUser("i0001").orElseThrow())
+                .subjectTitle("Calculus I")
+                .build();
+        subjectService.save(subject2);
+
         String lecturerToken = authenticationService.login(new AuthenticationRequest(subject.getLecturerInCharge().getId(), "DEMOSURNAME")).getBody().getJwtToken();
         List<Student> savedStudents = new ArrayList<>();
         File[] imagesDir = new File(getClass().getResource("/images").getPath()).listFiles();
         AtomicInteger integer = new AtomicInteger(0);
         assert imagesDir != null;
+        int halver = 1;
         for (File imageDir : imagesDir) {
             String[] names = imageDir.getName().split("_");
             ApplicationUser applicationUser = ApplicationUser.builder()
@@ -152,6 +161,9 @@ public class InitializeBeans {
                     .build();
             applicationUserService.create(applicationUser);
             studentService.saveStudent(student);
+            if (halver++ /2 % 2 == 0){
+                lecturerService.addStudentToSubject2(lecturerToken, student.getMatriculationNumber(), subject2.getSubjectCode());
+            }
             lecturerService.addStudentToSubject2(lecturerToken, student.getMatriculationNumber(), subject.getSubjectCode());
             savedStudents.add(student);
 //            var authenticationResponseEntity = authenticationService.login(new AuthenticationRequest(applicationUser.getId(), applicationUser.getLastname().toUpperCase()));
