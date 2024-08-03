@@ -159,6 +159,7 @@ public class AuthenticationService {
             }
             if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 user.setCredentialsNonExpired(true);
+                log.info("updating users credentials");
                 ResponseEntity<Void> response = applicationUserService.update(user);
                 if (!response.getStatusCode().is2xxSuccessful()){
                     return ResponseEntity.badRequest().body(new AuthenticationResponse("User not found",null,null));
@@ -174,7 +175,6 @@ public class AuthenticationService {
         return new ResponseEntity<>(new AuthenticationResponse("Invalid Username or Password", null, new HashSet<>()),
                 HttpStatus.NOT_FOUND);
     }
-
     public ResponseEntity<Void> logout(String bearerToken) {
         String id = jwtService.getId(jwtService.extractTokenFromHeader(bearerToken));
         Optional<ApplicationUser> userOptional = applicationUserService.findUser(id);

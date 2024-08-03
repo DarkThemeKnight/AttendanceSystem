@@ -11,6 +11,7 @@ import com.backend.FaceRecognition.utils.student.StudentRequest;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -73,13 +74,13 @@ public class FaceRecognitionService {
         return request;
     }
 
-    public ResponseEntity<Student> recognizeFace(MultipartFile file, String subjectId) {
+    public ResponseEntity<Student> recognizeFace(ByteArrayResource file, String subjectId) {
         String endpoint = faceRecognitionEndpoints.getEndpoint("rec") + "?subject_id=" + subjectId;
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", file.getResource());
+        body.add("file", file);
         HttpEntity<MultiValueMap<String, Object>> requestEntity
                 = new HttpEntity<>(body, headers);
         ResponseEntity<StudentRequest> responseEntity = restTemplate.exchange(

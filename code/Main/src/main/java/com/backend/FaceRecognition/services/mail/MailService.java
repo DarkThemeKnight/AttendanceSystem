@@ -6,11 +6,15 @@ import com.backend.FaceRecognition.repository.ResetPasswordTokenSaltRepository;
 import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.utils.Response;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -71,4 +75,24 @@ public class MailService {
         log.info("Forgot password reset link sent to =>{}",email);
     }
 
+    /**
+     * Sends an excel file containing attendance result as an attachment to an email.
+     * @param excelFile contains the attachment
+     * @param schoolEmail senders email
+     */
+    public void sendAttendanceCompletionMail(ByteArrayResource excelFile, String schoolEmail) {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+            helper.setTo(schoolEmail);
+            helper.setSubject("Attendance Completion Report");
+            helper.setText("Please find the attached attendance completion report.", true);
+            helper.addAttachment("AttendanceReport.xlsx", excelFile);
+
+            javaMailSender.send(message);
+        } catch (MessagingException e) {
+            log.error("Error while sending email", e);
+        }
+    }
 }

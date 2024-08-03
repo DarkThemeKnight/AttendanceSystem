@@ -2,12 +2,14 @@ package com.backend.FaceRecognition.services.attendance_service;
 
 import com.backend.FaceRecognition.constants.AttendanceStatus;
 import com.backend.FaceRecognition.entities.*;
+import com.backend.FaceRecognition.repository.ApplicationUserRepository;
 import com.backend.FaceRecognition.repository.AttendanceRepository;
 import com.backend.FaceRecognition.repository.AttendanceSetupPolicyRepository;
 import com.backend.FaceRecognition.repository.SuspensionRepository;
 import com.backend.FaceRecognition.services.face_recognition_service.FaceRecognitionService;
 import com.backend.FaceRecognition.services.jwt_service.JwtService;
 import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
+import com.backend.FaceRecognition.services.mail.MailService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
 import com.backend.FaceRecognition.utils.*;
 import com.backend.FaceRecognition.utils.history.AttendanceRecordHistoryResponse;
@@ -22,23 +24,21 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
+import java.time.Month;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 @Service
 @Slf4j
+
 public class AttendanceService {
     private final AttendanceSetupPolicyRepository attendanceSetupRepository;
     private final AttendanceRepository attendanceRepository;
@@ -49,9 +49,9 @@ public class AttendanceService {
     private final SuspensionRepository suspensionRepository;
     @Lazy
     public AttendanceService(AttendanceSetupPolicyRepository attendanceSetupRepository,
-            AttendanceRepository attendanceRepository, FaceRecognitionService faceRecognitionService,
-            SubjectService subjectService, JwtService jwtService, StudentService studentService,
-            SuspensionRepository suspensionRepository) {
+                             AttendanceRepository attendanceRepository, FaceRecognitionService faceRecognitionService,
+                             SubjectService subjectService, JwtService jwtService, StudentService studentService,
+                             SuspensionRepository suspensionRepository) {
         this.attendanceSetupRepository = attendanceSetupRepository;
         this.attendanceRepository = attendanceRepository;
         this.faceRecognitionService = faceRecognitionService;
@@ -177,10 +177,11 @@ public class AttendanceService {
         attendanceRepository.save(attendance);
         return ResponseEntity.ok(new ObjectMapper().writeValueAsString(new Response("Success")));
     }
+
     public ResponseEntity<String> updateAttendanceStatus(String attendanceCode,
-                                                     MultipartFile multipartFile) {
-        Optional<AttendanceSetupPolicy> attendanceSetup =
-                attendanceSetupRepository.findById(attendanceCode);
+                                                     ByteArrayResource multipartFile) {
+        Optional<AttendanceSetupPolicy> attendanceSetup = attendanceSetupRepository.findByCode(attendanceCode);
+        log.info("Resp {}",attendanceSetup);
         if (attendanceSetup.isEmpty()) {
             return ResponseEntity.badRequest().body("Attendance is not initialized yet");
         }
@@ -252,7 +253,6 @@ public class AttendanceService {
                 studentAttendance);
         return ResponseEntity.ok(attendanceRecordResponse);
     }
-
     public ResponseEntity<ByteArrayResource> getAttendanceExcel(String subjectCode, LocalDate date, int sort,
             String bearer) {
 
@@ -302,7 +302,8 @@ public class AttendanceService {
         byte[] bytes = outputStream.toByteArray();
         ByteArrayResource resource = new ByteArrayResource(bytes);
         HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.add("Content-Disposition", "attachment; filename=attendance record for " + subjectCode + ".xlsx");
+        String parsedDate=date.toString().replace("/","_");
+        httpHeaders.add("Content-Disposition", "attachment; filename=attendance record for " + subjectCode+" "+parsedDate+".xlsx");
         return ResponseEntity.ok()
                 .headers(httpHeaders)
                 .contentLength(bytes.length)
@@ -310,7 +311,6 @@ public class AttendanceService {
                         .parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(resource);
     }
-
     private List<Attendance> filterAttendanceByStatus(List<Attendance> attendanceList, AttendanceStatus status) {
         return attendanceList.stream()
                 .filter(attendance -> attendance.getStatus().equals(status))
@@ -367,34 +367,31 @@ public class AttendanceService {
         return ResponseEntity.ok(new StudentAttendanceRecordResponse(
                 attendanceList.get(0).getStudentId(), getDefault));
     }
-    public ResponseEntity<ByteArrayResource> printAttendanceRecord(String bearer, String code) {
-        ResponseEntity<StudentAttendanceRecordResponse> response = viewAttendanceRecord(bearer,code);
-        if (response.getStatusCode() != HttpStatus.OK) {
-            return ResponseEntity.notFound().build();
-        }
-        if (response.getBody() == null) {
-            return ResponseEntity.noContent().build();
-        }
-        return buildExcel(response.getBody());
-    }
-    private ResponseEntity<ByteArrayResource> buildExcel(StudentAttendanceRecordResponse body) {
+    public ResponseEntity<ByteArrayResource> printAttendanceRecord(String bearer) {
+        String id=jwtService.getId(jwtService.extractTokenFromHeader(bearer));
+        List<Attendance> allMyAttendance = attendanceRepository.findByStudentId(jwtService.getId(jwtService.extractTokenFromHeader(bearer)));
+        allMyAttendance = allMyAttendance.stream().filter(attendance -> attendance.getDate().isAfter(LocalDate.of(LocalDate.now().getYear(), Month.JANUARY,1))).collect(Collectors.toList());
+        HashMap<String, Double> myScoreHashmap = new HashMap<>();
+        allMyAttendance.forEach(attendance -> {
+            myScoreHashmap.computeIfPresent(attendance.getSubjectId(),(k,v)->attendance.getStatus().equals(AttendanceStatus.PRESENT)?v+1.0:v+0.0);
+            myScoreHashmap.putIfAbsent(attendance.getSubjectId(),attendance.getStatus().equals(AttendanceStatus.PRESENT)?1.0:0.0);
+        });
+        int rowNum = 1;
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Attendance Record");
         Row headerRow = sheet.createRow(0);
-        headerRow.createCell(0).setCellValue("Student ID");
-        headerRow.createCell(1).setCellValue("Subject ID");
-        headerRow.createCell(2).setCellValue("Date");
-        headerRow.createCell(3).setCellValue("Status");
-        List<StudentAttendanceRecordResponse.DefaultResponse> attendanceRecord = body.getAttendanceRecord();
-        int rowNum = 1;
-        for (StudentAttendanceRecordResponse.DefaultResponse attendance : attendanceRecord) {
+        headerRow.createCell(0).setCellValue("Subject ID");
+        headerRow.createCell(1).setCellValue("Subject Title");
+        headerRow.createCell(2).setCellValue("Score");
+        for (Map.Entry<String,Double> entry:myScoreHashmap.entrySet()){
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(body.getStudentId());
-            row.createCell(1).setCellValue(attendance.getSubjectId());
-            row.createCell(2).setCellValue(attendance.getDate().format(DateTimeFormatter.ISO_DATE));
-            row.createCell(3).setCellValue(attendance.getStatus().toString());
+            row.createCell(0).setCellValue(entry.getKey());
+            row.createCell(1).setCellValue(subjectService.findSubjectByCode(entry.getKey()).get().getSubjectTitle());
+            List<AttendanceSetupPolicy> policies = attendanceSetupRepository.findAllBySubjectId(entry.getKey());
+            double percentage = ((100) * entry.getValue()) / policies.size();
+            row.createCell(0).setCellValue(String.format("%.2f",percentage).concat("%"));
         }
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 3; i++) {
             sheet.autoSizeColumn(i);
         }
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -406,7 +403,7 @@ public class AttendanceService {
         }
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        headers.setContentDispositionFormData("filename", "attendance_record.xlsx");
+        headers.setContentDispositionFormData("filename", "attendance_record_for_"+id+".xlsx");
         return new ResponseEntity<>(new ByteArrayResource(outputStream.toByteArray()), headers, HttpStatus.OK);
     }
     public ResponseEntity<List<Attendance>> getStudentRecord(String studentId) {

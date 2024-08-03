@@ -52,7 +52,7 @@ public class SecurityFilter {
                                     .permitAll()
                                     .requestMatchers("/api/v1/students/update")
                                     .permitAll()
-                                    .requestMatchers("/api/v1/students/image")
+                                    .requestMatchers("/api/v1/students/image", "/api/v1/students/view","/api/v1/students/print")
                                     .authenticated()
                                     .requestMatchers("api/v1/super-admin/**")
                                     .hasRole("SUPER_ADMIN")

@@ -2,47 +2,61 @@ package com.backend.FaceRecognition.helper;
 
 import com.backend.FaceRecognition.constants.AttendanceStatus;
 import com.backend.FaceRecognition.constants.Role;
-import com.backend.FaceRecognition.entities.ApplicationUser;
-import com.backend.FaceRecognition.entities.Notification;
-import com.backend.FaceRecognition.entities.Student;
-import com.backend.FaceRecognition.entities.Subject;
+import com.backend.FaceRecognition.entities.*;
+import com.backend.FaceRecognition.repository.AttendanceSetupPolicyRepository;
 import com.backend.FaceRecognition.repository.NotificationRepository;
 import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
 import com.backend.FaceRecognition.services.attendance_service.AttendanceService;
 import com.backend.FaceRecognition.services.authentication_service.AuthenticationService;
 import com.backend.FaceRecognition.services.authorization_service.lecturer_service.LecturerService;
 import com.backend.FaceRecognition.services.authorization_service.student_service.StudentService;
+import com.backend.FaceRecognition.services.jwt_service.JwtService;
+import com.backend.FaceRecognition.services.mail.MailService;
 import com.backend.FaceRecognition.services.subject.SubjectService;
 import com.backend.FaceRecognition.utils.FaceRecognitionEndpoints;
 import com.backend.FaceRecognition.utils.authentication.AuthenticationRequest;
 import com.google.common.io.Files;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaDelete;
+import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@Component
+@Configuration
+@EnableScheduling
 @Slf4j
 @RequiredArgsConstructor
 public class InitializeBeans {
     private final ApplicationUserService applicationUserService;
+    private final AttendanceSetupPolicyRepository attendanceSetupRepository;
     private final PasswordEncoder passwordEncoder;
     private final AttendanceService attendanceService;
+    private final JwtService jwtService;
     private final LecturerService lecturerService;
     private final StudentService studentService;
     private final SubjectService subjectService;
     private final NotificationRepository notificationRepository;
+    private final MailService mailService;
+    private final EntityManager entityManager;
 
     private final AuthenticationService authenticationService;
     @Value("${spring.jpa.hibernate.ddl-auto}")
@@ -101,10 +115,10 @@ public class InitializeBeans {
                 .address("Demo Address")
                 .phoneNumber("029203939202")
                 .userRole(Set.of(Role.ROLE_LECTURER))
-                .firstname("demo_lecturer1")
-                .lastname("demoSurname")
-                .schoolEmail("demo_email")
-                .password(passwordEncoder.encode("DEMOSURNAME"))
+                .firstname("Ayanfeoluwa")
+                .lastname("David")
+                .schoolEmail("ayanfeoluwadafidi@gmail.com")
+                .password(passwordEncoder.encode("DEFAULT"))
                 .isAccountNonExpired(true)
                 .isEnabled(true)
                 .isCredentialsNonExpired(true)
@@ -166,30 +180,30 @@ public class InitializeBeans {
             }
             lecturerService.addStudentToSubject2(lecturerToken, student.getMatriculationNumber(), subject.getSubjectCode());
             savedStudents.add(student);
-//            var authenticationResponseEntity = authenticationService.login(new AuthenticationRequest(applicationUser.getId(), applicationUser.getLastname().toUpperCase()));
-//            if (authenticationResponseEntity.getStatusCode().is2xxSuccessful()) {
-//                String studentToken = Objects.requireNonNull(authenticationResponseEntity.getBody()).getJwtToken();
-//                File[] images = imageDir.listFiles();
-//                assert images != null;
-//                Arrays.stream(images).forEach(image -> {
-//                    try {
-//                        ByteArrayResource byteArrayResource = new ByteArrayResource(Files.toByteArray(image)) {
-//                            @Override
-//                            public String getFilename() {
-//                                return image.getName() + ".jpg";
-//                            }
-//                        };
-//                        log.info("Adding image encodings for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
-//                        var response = studentService.addStudentImage(byteArrayResource, studentToken);
-//                        log.info("Result => {}", response.getStatusCode().is2xxSuccessful() ? "SUCCESS" : "FAILED");
-//                    } catch (IOException ignored) {
-//                        log.warn("Failed to process image for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
-//                    }
-//                });
-//            } else {
-//                log.error("Authentication failed for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
-//                throw new RuntimeException();
-//            }
+            var authenticationResponseEntity = authenticationService.login(new AuthenticationRequest(applicationUser.getId(), applicationUser.getLastname().toUpperCase()));
+            if (authenticationResponseEntity.getStatusCode().is2xxSuccessful()) {
+                String studentToken = Objects.requireNonNull(authenticationResponseEntity.getBody()).getJwtToken();
+                File[] images = imageDir.listFiles();
+                assert images != null;
+                Arrays.stream(images).forEach(image -> {
+                    try {
+                        ByteArrayResource byteArrayResource = new ByteArrayResource(Files.toByteArray(image)) {
+                            @Override
+                            public String getFilename() {
+                                return image.getName() + ".jpg";
+                            }
+                        };
+                        log.info("Adding image encodings for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
+                        var response = studentService.addStudentImage(byteArrayResource, studentToken);
+                        log.info("Result => {}", response.getStatusCode().is2xxSuccessful() ? "SUCCESS" : "FAILED");
+                    } catch (IOException ignored) {
+                        log.warn("Failed to process image for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
+                    }
+                });
+            } else {
+                log.error("Authentication failed for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
+                throw new RuntimeException();
+            }
         }
         initializeAttendances(savedStudents, subject, lecturerToken);
 
@@ -247,4 +261,35 @@ public class InitializeBeans {
         log.info("Face Recognition Endpoints initialized.");
         return new FaceRecognitionEndpoints(endpointMap);
     }
+
+    @Scheduled(cron = "0 */15 8-16 * * ?") //Every 15 min between 8am - 6pm
+    private void transmitMail(){
+        log.info("Sending initialize attendance mails ..................");
+        List<AttendanceSetupPolicy> policies = attendanceSetupRepository.findAll();
+        policies.stream().filter(policy-> policy.getAttendanceDateTime()
+                        .isAfter(LocalDateTime.now().minusHours(1)))
+                .filter(policy-> LocalDateTime.now().isAfter(policy.getAttendanceDateTime().plusMinutes(policy.getDuration())))
+                .forEach(policy-> {
+                    Optional<Subject> subjectOptional = subjectService.findSubjectByCode(policy.getSubjectId());
+                    if (subjectOptional.isPresent()) {
+                        Subject subject= subjectOptional.get();
+                        Date date = JwtService.getDate(3, 'M');
+                        String minBearer = jwtService.generate(new HashMap<>(), subject.getLecturerInCharge(), date);
+                        ByteArrayResource excelFile = attendanceService.getAttendanceExcel(policy.getSubjectId(), policy.getAttendanceDate(), 0, "Bearer " + minBearer).getBody();
+                        mailService.sendAttendanceCompletionMail(excelFile, subject.getLecturerInCharge().getSchoolEmail());
+                    }
+                });
+    }
+
+    @Scheduled(cron = "0 0 0 * * *") // Runs every day at midnight
+    public void cleanupExpiredNotifications() {
+        log.info("Cleaning up Expired Notifications................");
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaDelete<Notification> deleteQuery = cb.createCriteriaDelete(Notification.class);
+        Root<Notification> notificationRoot = deleteQuery.from(Notification.class);
+        deleteQuery.where(cb.lessThan(notificationRoot.get("validUntil"), LocalDate.now()));
+        entityManager.createQuery(deleteQuery).executeUpdate();
+        log.info("Done");
+    }
+
 }

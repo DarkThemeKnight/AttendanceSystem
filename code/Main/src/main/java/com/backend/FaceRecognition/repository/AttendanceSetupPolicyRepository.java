@@ -12,4 +12,5 @@ import java.util.Optional;
 public interface AttendanceSetupPolicyRepository extends JpaRepository<AttendanceSetupPolicy,String> {
     Optional<AttendanceSetupPolicy> findBySubjectIdAndAttendanceDate(String subjectId, LocalDate date);
     List<AttendanceSetupPolicy> findAllBySubjectId(String subjectId);
+    Optional<AttendanceSetupPolicy> findByCode(String code);
 }
