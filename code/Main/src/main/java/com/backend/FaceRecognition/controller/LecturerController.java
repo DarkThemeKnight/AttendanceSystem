@@ -5,7 +5,6 @@ import com.backend.FaceRecognition.services.attendance_service.AttendanceService
 import com.backend.FaceRecognition.services.authorization_service.lecturer_service.LecturerService;
 import com.backend.FaceRecognition.utils.*;
 import com.backend.FaceRecognition.utils.history.AttendanceRecordHistoryResponse;
-import com.backend.FaceRecognition.utils.student.StudentRequest;
 import com.backend.FaceRecognition.utils.subject.SubjectResponse;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -14,8 +13,6 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
-
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;

@@ -166,30 +166,30 @@ public class InitializeBeans {
             }
             lecturerService.addStudentToSubject2(lecturerToken, student.getMatriculationNumber(), subject.getSubjectCode());
             savedStudents.add(student);
-//            var authenticationResponseEntity = authenticationService.login(new AuthenticationRequest(applicationUser.getId(), applicationUser.getLastname().toUpperCase()));
-//            if (authenticationResponseEntity.getStatusCode().is2xxSuccessful()) {
-//                String studentToken = Objects.requireNonNull(authenticationResponseEntity.getBody()).getJwtToken();
-//                File[] images = imageDir.listFiles();
-//                assert images != null;
-//                Arrays.stream(images).forEach(image -> {
-//                    try {
-//                        ByteArrayResource byteArrayResource = new ByteArrayResource(Files.toByteArray(image)) {
-//                            @Override
-//                            public String getFilename() {
-//                                return image.getName() + ".jpg";
-//                            }
-//                        };
-//                        log.info("Adding image encodings for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
-//                        var response = studentService.addStudentImage(byteArrayResource, studentToken);
-//                        log.info("Result => {}", response.getStatusCode().is2xxSuccessful() ? "SUCCESS" : "FAILED");
-//                    } catch (IOException ignored) {
-//                        log.warn("Failed to process image for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
-//                    }
-//                });
-//            } else {
-//                log.error("Authentication failed for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
-//                throw new RuntimeException();
-//            }
+            var authenticationResponseEntity = authenticationService.login(new AuthenticationRequest(applicationUser.getId(), applicationUser.getLastname().toUpperCase()));
+            if (authenticationResponseEntity.getStatusCode().is2xxSuccessful()) {
+                String studentToken = Objects.requireNonNull(authenticationResponseEntity.getBody()).getJwtToken();
+                File[] images = imageDir.listFiles();
+                assert images != null;
+                Arrays.stream(images).forEach(image -> {
+                    try {
+                        ByteArrayResource byteArrayResource = new ByteArrayResource(Files.toByteArray(image)) {
+                            @Override
+                            public String getFilename() {
+                                return image.getName() + ".jpg";
+                            }
+                        };
+                        log.info("Adding image encodings for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
+                        var response = studentService.addStudentImage(byteArrayResource, studentToken);
+                        log.info("Result => {}", response.getStatusCode().is2xxSuccessful() ? "SUCCESS" : "FAILED");
+                    } catch (IOException ignored) {
+                        log.warn("Failed to process image for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
+                    }
+                });
+            } else {
+                log.error("Authentication failed for student ID => {}, Name => {}", applicationUser.getId(), applicationUser.getFirstname() + applicationUser.getLastname());
+                throw new RuntimeException();
+            }
         }
         initializeAttendances(savedStudents, subject, lecturerToken);
 

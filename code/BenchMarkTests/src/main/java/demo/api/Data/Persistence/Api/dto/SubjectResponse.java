@@ -1,4 +1,4 @@
-package com.backend.FaceRecognition.utils.subject;
+package demo.api.Data.Persistence.Api.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -33,7 +33,6 @@ public class SubjectResponse {
         String firstname;
         String lastname;
         boolean isSuspended;
-        String percentage;
     }
     public SubjectResponse(String message) {
         this.message = message;

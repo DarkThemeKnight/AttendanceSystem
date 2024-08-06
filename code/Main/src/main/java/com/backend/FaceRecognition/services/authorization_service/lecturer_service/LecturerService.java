@@ -1,6 +1,8 @@
 package com.backend.FaceRecognition.services.authorization_service.lecturer_service;
 
+import com.backend.FaceRecognition.constants.AttendanceStatus;
 import com.backend.FaceRecognition.entities.*;
+import com.backend.FaceRecognition.repository.AttendanceSetupPolicyRepository;
 import com.backend.FaceRecognition.repository.SuspensionRepository;
 import com.backend.FaceRecognition.services.attendance_service.AttendanceService;
 import com.backend.FaceRecognition.services.application_user.ApplicationUserService;
@@ -13,15 +15,14 @@ import com.backend.FaceRecognition.utils.StudentAttendanceRecordResponse;
 import com.backend.FaceRecognition.utils.subject.SubjectResponse;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,6 +43,9 @@ public class LecturerService {
         this.jwtService = jwtService;
         this.applicationUserService = applicationUserService;
     }
+    @Lazy
+    @Autowired
+    private AttendanceSetupPolicyRepository attendanceSetupPolicyRepository;
     public ResponseEntity<SubjectResponse> getSubject(String subjectCode,String bearer) {
            Optional<Subject> optionalSubject = subjectService.findSubjectByCode(subjectCode);
            log.info("getting subject");
@@ -51,6 +55,8 @@ public class LecturerService {
            }
         if(!cantPerformOperation(bearer,optionalSubject.get())) {
             SubjectResponse response = parse(optionalSubject.get());
+
+
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
         else {
@@ -71,6 +77,7 @@ public class LecturerService {
         SubjectResponse response = new SubjectResponse();
         response.setSubjectCode(subject.getSubjectCode());
         response.setSubjectTitle(subject.getSubjectTitle());
+        List<Attendance> attendanceList = new ArrayList<>();
         response.setIdLecturerInCharge(
                 subject.getLecturerInCharge() == null ? "" : subject.getLecturerInCharge().getId());
         Set<Student> students = studentService
@@ -78,16 +85,30 @@ public class LecturerService {
         Set<SubjectResponse.Metadata> matriculationNum = students.
                 stream()
                 .map(v -> {
+                    ResponseEntity<List<Attendance>> response1 = attendanceService.getStudentRecord(v.getMatriculationNumber());
+                    AtomicInteger score= new AtomicInteger();
+                    String percentage="0";
+                    if (response1.getStatusCode().is2xxSuccessful()&& response1.getBody() != null) {
+                        response1.getBody().forEach(attendance -> {
+                            if (attendance.getStatus().equals(AttendanceStatus.PRESENT)){
+                                score.getAndIncrement();
+                            }
+                        });
+                        percentage = String.format("%.2f", (score.get() * 100.0)/response1.getBody().size());
+                    }
                     SubjectResponse.Metadata subjectResponseMetadata = SubjectResponse.Metadata.builder()
                                     .studentId(v.getMatriculationNumber())
                                     .firstname(v.getFirstname())
                                     .lastname(v.getLastname())
+                                    .percentage(percentage)
                                     .build();
                     Optional<Suspension> suspension = suspensionRepository.findByStudentIdAndSubjectId(v.getMatriculationNumber(),subject.getSubjectCode());
                     subjectResponseMetadata.setSuspended(suspension.isPresent());
                     return subjectResponseMetadata;
                         }
                 ).collect(Collectors.toSet());
+
+
         response.setStudents(matriculationNum);
         response.setMessage("Fetched Successfully");
         if (subject.getLecturerInCharge() != null) {

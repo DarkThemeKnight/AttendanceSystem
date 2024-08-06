@@ -8,6 +8,7 @@ import com.backend.FaceRecognition.utils.StudentAttendanceRecordResponse;
 import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +23,7 @@ import java.util.Optional;
 @CrossOrigin("*")
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class StudentController {
     private final StudentService studentService;
     private final AttendanceService attendanceService;
@@ -45,7 +47,9 @@ public class StudentController {
         return build(response);
     }
     private ResponseEntity<Response> build(ResponseEntity<String> initial) {
-        return new ResponseEntity<>(new Response(initial.getBody()), initial.getStatusCode());
+        var resp = new Response(initial.getBody());
+        log.info("Response => {}, Response Code {}",resp, initial.getStatusCode());
+        return new ResponseEntity<>(resp, initial.getStatusCode());
     }
     @GetMapping("/view")
     private ResponseEntity<StudentAttendanceRecordResponse> getAttendance(

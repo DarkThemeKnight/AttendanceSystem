@@ -14,6 +14,7 @@ import com.backend.FaceRecognition.utils.EncodedImage;
 import com.backend.FaceRecognition.utils.FaceRecognitionEndpoints;
 import com.backend.FaceRecognition.utils.StudentProfile;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -28,6 +29,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
+@Slf4j
 public class StudentService {
     private final EncodedImagesRepository encodedImagesRepository;
     private final StudentRepository studentRepository;
@@ -70,6 +72,7 @@ public class StudentService {
         if (student == null) {
             return new ResponseEntity<>("Student not found", HttpStatus.NOT_FOUND);
         }
+        log.info("Adding image for student {}",student);
         String url = faceRecognitionEndpoints.getEndpoint("ip")+"?student_id="+studentId; // Your FastAPI endpoint URL
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);

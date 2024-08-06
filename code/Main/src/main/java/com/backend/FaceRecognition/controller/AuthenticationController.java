@@ -20,6 +20,7 @@ public class AuthenticationController {
     public AuthenticationController(AuthenticationService authenticationService) {
         this.authenticationService = authenticationService;
     }
+
     @PostMapping("/login")
     public ResponseEntity<AuthenticationResponse> login(@RequestBody AuthenticationRequest authenticationRequest) {
         return authenticationService.login(authenticationRequest);
@@ -27,22 +28,24 @@ public class AuthenticationController {
 
     @PutMapping("/logout")
     public ResponseEntity<Void> logout(@RequestHeader(name = "Authorization") String bearerToken) {
-        // Delegate the logout process to the AuthenticationService
         return authenticationService.logout(bearerToken);
     }
+
     @PostMapping("/forgot-password")
-    public ResponseEntity<Response> forgotPassword(@RequestParam String userId){
+    public ResponseEntity<Response> forgotPassword(@RequestParam String userId) {
         return authenticationService.forgotPassword(userId);
     }
+
     @PutMapping("/updatePassword/{token}")
-    public ResponseEntity<Response> update(@PathVariable("token")String token, @RequestBody ResetPassword resetPassword) {
+    public ResponseEntity<Response> update(@PathVariable("token") String token,
+            @RequestBody ResetPassword resetPassword) {
         return authenticationService.resetPassword(token, resetPassword);
     }
+
     @PutMapping("/updatePassword")
     public ResponseEntity<Response> updatePassword(@RequestHeader("Authorization") String bearer,
-                                                   @RequestBody ResetPassword resetPassword){
-        return authenticationService.updatePassword(bearer,resetPassword);
+            @RequestBody ResetPassword resetPassword) {
+        return authenticationService.updatePassword(bearer, resetPassword);
     }
 
 }
-    
