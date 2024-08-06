@@ -1,5 +1,6 @@
 package demo.api.Data.Persistence.Api.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,6 +15,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Data
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SubjectResponse {
     private String message;
     @JsonProperty("subject_code")
@@ -28,10 +30,12 @@ public class SubjectResponse {
     @AllArgsConstructor
     @Data
     @Builder
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Metadata{
         String studentId;
         String firstname;
         String lastname;
+        String percentage;
         boolean isSuspended;
     }
     public SubjectResponse(String message) {

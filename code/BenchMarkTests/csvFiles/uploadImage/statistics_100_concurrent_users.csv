@@ -1,0 +1,6 @@
+Metric,Value
+Mean Response Time (ms),6063.595505617977
+Max Response Time (ms),22514
+Min Response Time (ms),1727
+Standard Deviation (ms),3151.025825474775
+Total Requests,89

@@ -1,0 +1,63 @@
+### Observations from the Stress Test
+
+**For 30 Concurrent Users:**
+- **Mean Response Time (ms):** 2331.58
+- **Max Response Time (ms):** 12615
+- **Min Response Time (ms):** 784
+- **Standard Deviation (ms):** 2193.75
+- **Total Requests:** 26
+
+**Observations:**
+- The system handled 30 concurrent users with a mean response time of approximately 2.3 seconds.
+- The response times varied significantly, as indicated by the large standard deviation (2193.75 ms), with the maximum response time reaching over 12 seconds.
+- This level of variability suggests potential bottlenecks or issues under load.
+
+**For 50 Concurrent Users:**
+- **Mean Response Time (ms):** 3041.67
+- **Max Response Time (ms):** 14679
+- **Min Response Time (ms):** 1280
+- **Standard Deviation (ms):** 2049.83
+- **Total Requests:** 43
+
+**Observations:**
+- With an increase to 50 concurrent users, the mean response time increased to around 3 seconds, indicating a moderate rise in latency.
+- The max response time also increased to approximately 14.7 seconds, and the standard deviation remained high, showing continued variability in response times.
+- The system managed to handle more requests, but the higher max response time suggests additional strain.
+
+**For 100 Concurrent Users:**
+- **Mean Response Time (ms):** 6063.60
+- **Max Response Time (ms):** 22514
+- **Min Response Time (ms):** 1727
+- **Standard Deviation (ms):** 3151.03
+- **Total Requests:** 89
+
+**Observations:**
+- Doubling the concurrent users to 100 led to a significant increase in mean response time to over 6 seconds.
+- The maximum response time increased to more than 22 seconds, indicating severe performance degradation.
+- The standard deviation also increased, showing more inconsistency in response times, which may impact user experience.
+
+**For 200 Concurrent Users:**
+- **Mean Response Time (ms):** 13018.71
+- **Max Response Time (ms):** 41333
+- **Min Response Time (ms):** 3368
+- **Standard Deviation (ms):** 7183.59
+- **Total Requests:** 180
+
+**Observations:**
+- At 200 concurrent users, the mean response time rose dramatically to over 13 seconds, suggesting that the system is under substantial stress.
+- The maximum response time reached an alarming 41 seconds, which is far from acceptable for a responsive user experience.
+- The high standard deviation (7183.59 ms) reflects extreme variability, which could be due to server or network limitations, or inefficiencies in handling high loads.
+
+### General Observations and Recommendations:
+
+1. **Scalability Concerns:** As the number of concurrent users increased, the system's performance degraded significantly. This trend suggests that the current system may not be well-optimized for handling higher loads.
+
+2. **High Variability in Response Times:** The large standard deviations across all tests indicate inconsistent performance. This inconsistency can lead to unpredictable user experiences, with some users experiencing significantly longer load times than others.
+
+3. **Potential Bottlenecks:** The increase in response times with concurrent users suggests possible bottlenecks in the system, such as CPU, memory, database throughput, or inefficient code paths.
+
+4. **Recommendations:**
+   - **Load Testing and Optimization:** Further testing should be conducted to identify specific bottlenecks. Profiling tools can help pinpoint slow parts of the system.
+   - **Scalability Improvements:** Consider implementing load balancing, database optimization, and possibly scaling out the infrastructure (e.g., more servers) to handle higher traffic volumes.
+   - **Code and Database Optimization:** Optimize database queries, use caching where appropriate, and ensure efficient code practices to reduce response times.
+   - **Monitoring and Alerting:** Implement comprehensive monitoring to track system performance and automatically alert when response times exceed acceptable thresholds.

@@ -77,7 +77,6 @@ public class LecturerService {
         SubjectResponse response = new SubjectResponse();
         response.setSubjectCode(subject.getSubjectCode());
         response.setSubjectTitle(subject.getSubjectTitle());
-        List<Attendance> attendanceList = new ArrayList<>();
         response.setIdLecturerInCharge(
                 subject.getLecturerInCharge() == null ? "" : subject.getLecturerInCharge().getId());
         Set<Student> students = studentService
@@ -85,11 +84,12 @@ public class LecturerService {
         Set<SubjectResponse.Metadata> matriculationNum = students.
                 stream()
                 .map(v -> {
-                    ResponseEntity<List<Attendance>> response1 = attendanceService.getStudentRecord(v.getMatriculationNumber());
+                    ResponseEntity<List<Attendance>> response1 =
+                            attendanceService.getStudentRecord(v.getMatriculationNumber());
                     AtomicInteger score= new AtomicInteger();
                     String percentage="0";
-                    if (response1.getStatusCode().is2xxSuccessful()&& response1.getBody() != null) {
-                        response1.getBody().forEach(attendance -> {
+                    if (response1.getStatusCode().is2xxSuccessful() && response1.getBody() != null) {
+                        response1.getBody().stream().filter(attendance -> attendance.getSubjectId().equalsIgnoreCase(subject.getSubjectCode())).forEach(attendance -> {
                             if (attendance.getStatus().equals(AttendanceStatus.PRESENT)){
                                 score.getAndIncrement();
                             }

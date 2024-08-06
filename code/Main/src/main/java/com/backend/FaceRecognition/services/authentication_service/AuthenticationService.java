@@ -118,59 +118,43 @@ public class AuthenticationService {
                 .isEnabled(true)
                 .build();
     }
-    /**
-     * Authenticates a user based on the provided credentials.
-     * This method attempts to authenticate a user using the provided credentials.
-     * It first retrieves the user based on the provided ID from the application
-     * user service.
-     * If the user is found, it checks if the account is enabled. If the account is
-     * enabled
-     * and the provided password matches the user's password, it updates the user's
-     * credential
-     * expiration status, generates a JWT token for the user, and returns a success
-     * response with
-     * the generated token. If the account is locked or the provided password is
-     * incorrect,
-     * appropriate error responses are returned.
-     *
-     * @param request The authentication request containing the user ID and
-     *                password.
-     * @return A ResponseEntity containing an AuthenticationResponse object.
-     *         If the login is successful, a JWT token is returned along with a
-     *         success response (200).
-     *         If the account is locked, a locked account response (423) is
-     *         returned.
-     *         If the user is not found or the password is incorrect, a not found
-     *         response (404)
-     *         or a conflict response (409) is returned, respectively.
-     */
     public ResponseEntity<AuthenticationResponse> login(AuthenticationRequest request) {
         Optional<ApplicationUser> userOptional = applicationUserService.findUser(request.getId());
-        if (userOptional.isEmpty()){
-            log.info("Cannot find user");
+
+        if (userOptional.isEmpty()) {
+            log.info("User not found for ID: {}", request.getId());
+            return new ResponseEntity<>(new AuthenticationResponse("Invalid Username or Password", null, new HashSet<>()),
+                    HttpStatus.NOT_FOUND);
         }
-        if (userOptional.isPresent()) {
-            ApplicationUser user = userOptional.get();
-            log.info("User found => {}",user.getId());
-            if (!user.isEnabled()) {
-                log.warn("Locked account of id => {} is trying to access", request.getId());
-                return new ResponseEntity<>(new AuthenticationResponse("Locked Account", null, new HashSet<>()),
-                        HttpStatus.LOCKED);
-            }
-            if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                user.setCredentialsNonExpired(true);
-                ResponseEntity<Void> response = applicationUserService.update(user);
-                if (!response.getStatusCode().is2xxSuccessful()){
-                    return ResponseEntity.badRequest().body(new AuthenticationResponse("User not found",null,null));
-                }
-                Date expiry = JwtService.getDate(1,'H');
-                LocalDateTime localDateTime = LocalDateTime.now().plusHours(1);
-                String token = jwtService.generate(new HashMap<>(),user,expiry);
-                log.info(("Successful login {}"), request.getId());
-                return new ResponseEntity<>(new AuthenticationResponse("Login successfully", token, user.getUserRole(),localDateTime),
-                        HttpStatus.OK);
-            }
+
+        ApplicationUser user = userOptional.get();
+        log.info("User found for ID: {}", user.getId());
+
+        if (!user.isEnabled()) {
+            log.warn("Locked account attempting access: {}", request.getId());
+            return new ResponseEntity<>(new AuthenticationResponse("Locked Account", null, new HashSet<>()),
+                    HttpStatus.LOCKED);
         }
+
+        if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            user.setCredentialsNonExpired(true);
+            ResponseEntity<Void> response = applicationUserService.update(user);
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.error("Error updating user credentials for ID: {}", user.getId());
+                return ResponseEntity.badRequest().body(new AuthenticationResponse("Failed to update user", null, new HashSet<>()));
+            }
+
+            Date expiry = JwtService.getDate(1, 'H');
+            LocalDateTime localDateTime = LocalDateTime.now().plusHours(1);
+            String token = jwtService.generate(new HashMap<>(), user, expiry);
+
+            log.info("Successful login for ID: {}", request.getId());
+            return new ResponseEntity<>(new AuthenticationResponse("Login successfully", token, user.getUserRole(), localDateTime),
+                    HttpStatus.OK);
+        }
+
+        log.info("Invalid password attempt for ID: {}", request.getId());
         return new ResponseEntity<>(new AuthenticationResponse("Invalid Username or Password", null, new HashSet<>()),
                 HttpStatus.NOT_FOUND);
     }

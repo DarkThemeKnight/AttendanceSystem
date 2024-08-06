@@ -214,7 +214,7 @@ public class AttendanceService {
             }
             attendance.setStatus(AttendanceStatus.PRESENT);
             attendanceRepository.save(attendance);
-            return new ResponseEntity<>("Successfully marked attendance: student Id = " + std.getMatriculationNumber(),
+            return new ResponseEntity<>("Successfully marked attendance: student Id=" + std.getMatriculationNumber(),
                     HttpStatus.OK);
         }catch (HttpClientErrorException | HttpServerErrorException ex) {
         if (ex.getStatusCode().isSameCodeAs(HttpStatus.NOT_FOUND) || ex.getStatusCode().isSameCodeAs(HttpStatus.BAD_REQUEST)) {
